@@ -1,0 +1,26 @@
+name: Daily Lottery Scraper
+on:
+  schedule:
+    - cron: '0 10 * * *' # Runs every day at 6:00 AM EST
+  workflow_dispatch: # Allows you to manually click a button to run it
+
+jobs:
+  scrape-and-save:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scraper.js
