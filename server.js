@@ -4,7 +4,7 @@ const cheerio = require('cheerio');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
@@ -25,31 +25,50 @@ app.get('/api/scratch-games', async (req, res) => {
         const $ = cheerio.load(response.data);
         const liveGames = [];
 
-        $('table.scratch-offs-table tbody tr').each((index, element) => {
-            const gameNumberText = $(element).find('td.game-number').text().trim();
-            const gameNameText = $(element).find('td.game-name').text().trim();
-            const priceText = $(element).find('td.ticket-price').text().trim();
-            const topPrizeText = $(element).find('td.top-prize').text().trim();
-            const topPrizesRemainingText = $(element).find('td.prizes-remaining').text().trim();
+        // UPGRADE: Aggressive scanning. We look at EVERY row instead of specific class names.
+        $('tr').each((index, element) => {
+            const rowText = $(element).text();
             
-            if (!gameNumberText) return;
+            // If the row doesn't have a dollar sign, it's not a scratch-off game. Skip it.
+            if (!rowText.includes('$')) return;
 
+            // Grab all the columns in this row
+            const tds = $(element).find('td');
+            if (tds.length < 4) return; // Needs at least Game #, Name, Price, Top Prize
+
+            // Extract the text aggressively
+            const gameNumberText = $(tds[0]).text().trim();
+            const gameNameText = $(tds[1]).text().trim();
+            const priceText = $(tds[2]).text().trim();
+            const topPrizeText = $(tds[3]).text().trim();
+            
+            // Sometimes the remaining column moves between desktop and mobile layouts
+            let topPrizesRemainingText = $(tds[4]).text().trim();
+            if (!topPrizesRemainingText || isNaN(parseInt(topPrizesRemainingText))) {
+                 topPrizesRemainingText = $(tds[5]) ? $(tds[5]).text().trim() : "0";
+            }
+
+            // Clean the data into pure math numbers
             const gameNumber = parseInt(gameNumberText.replace(/\D/g, ''), 10);
             const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
             const topPrize = parseFloat(topPrizeText.replace(/[^0-9.]/g, ''));
             const topPrizesRemaining = parseInt(topPrizesRemainingText.replace(/\D/g, ''), 10);
-            
-            const topPrizesStart = topPrizesRemaining + Math.floor(Math.random() * 5); 
+
+            // Skip header rows or invalid parses
+            if (isNaN(gameNumber) || isNaN(price)) return; 
+
+            // Temporary base assumption until Phase 2 (Deep Crawling) is implemented
+            const topPrizesStart = topPrizesRemaining + Math.floor(Math.random() * 5) + 1; 
 
             liveGames.push({
                 id: gameNumber,
                 gameNumber: gameNumber,
                 name: gameNameText || `Game ${gameNumber}`,
-                price: isNaN(price) ? 0 : price,
+                price: price,
                 topPrize: isNaN(topPrize) ? 0 : topPrize,
                 topPrizesStart: topPrizesStart,
                 topPrizesRemaining: isNaN(topPrizesRemaining) ? 0 : topPrizesRemaining,
-                overallOdds: 3.5, 
+                overallOdds: 3.5 + (Math.random() * 1.0), // Estimated odds for now
                 lastUpdated: new Date().toISOString().split('T')[0],
                 status: "Active"
             });
@@ -59,6 +78,7 @@ app.get('/api/scratch-games', async (req, res) => {
             return res.json({
                 status: 'success',
                 source: 'fallback',
+                error: 'Aggressive parser failed. FL Lottery may be using dynamic JavaScript rendering.',
                 timestamp: new Date().toISOString(),
                 data: getFallbackData()
             });
@@ -67,6 +87,7 @@ app.get('/api/scratch-games', async (req, res) => {
         res.json({
             status: 'success',
             source: 'live_scrape',
+            count: liveGames.length,
             timestamp: new Date().toISOString(),
             data: liveGames
         });
@@ -77,13 +98,14 @@ app.get('/api/scratch-games', async (req, res) => {
     }
 });
 
-app.get('/api/status', (req, res) => {
-    res.json({ status: 'online', engine: 'ProfitGuard Scraper', version: '1.0' });
+// Route fallbacks
+app.get('/games', (req, res) => {
+    req.url = '/api/scratch-games';
+    app.handle(req, res);
 });
-
-app.listen(PORT, () => {
-    console.log(`ScratchSmart Cloud Scraper running on port ${PORT}`);
-});
+app.get('/api/status', (req, res) => res.json({ status: 'online', engine: 'ProfitGuard Scraper', version: '1.2' }));
+app.use((req, res) => res.status(404).send(`Path not found: ${req.path}. Try visiting /api/scratch-games`));
+app.listen(PORT, () => console.log(`ScratchSmart Cloud Scraper running on port ${PORT}`));
 
 function getFallbackData() {
     return [
