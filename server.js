@@ -1,7 +1,6 @@
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
 const cors = require('cors');
+const puppeteer = require('puppeteer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,101 +10,114 @@ app.use(cors());
 const FL_LOTTERY_URL = 'https://floridalottery.com/games/scratch-offs';
 
 app.get('/api/scratch-games', async (req, res) => {
+    let browser = null;
     try {
-        console.log('Fetching live data from Florida Lottery...');
+        console.log('Launching Headless Chrome Browser...');
         
-        const response = await axios.get(FL_LOTTERY_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5'
-            }
+        // Launch invisible browser optimized for cloud environments
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--single-process'
+            ]
         });
-
-        const $ = cheerio.load(response.data);
-        const liveGames = [];
-
-        // UPGRADE: Aggressive scanning. We look at EVERY row instead of specific class names.
-        $('tr').each((index, element) => {
-            const rowText = $(element).text();
+        
+        const page = await browser.newPage();
+        
+        // Spoof a real human's mobile browser to bypass Cloudflare
+        await page.setUserAgent('Mozilla/5.0 (Linux; Android 13; SM-F936U1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36');
+        
+        console.log('Navigating to Florida Lottery...');
+        // Wait until the network is idle (meaning all JS has finished loading)
+        await page.goto(FL_LOTTERY_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        
+        console.log('Page loaded. Extracting dynamic data...');
+        
+        // This code runs INSIDE the invisible browser
+        const liveGames = await page.evaluate(() => {
+            const games = [];
+            const rows = document.querySelectorAll('tr');
             
-            // If the row doesn't have a dollar sign, it's not a scratch-off game. Skip it.
-            if (!rowText.includes('$')) return;
-
-            // Grab all the columns in this row
-            const tds = $(element).find('td');
-            if (tds.length < 4) return; // Needs at least Game #, Name, Price, Top Prize
-
-            // Extract the text aggressively
-            const gameNumberText = $(tds[0]).text().trim();
-            const gameNameText = $(tds[1]).text().trim();
-            const priceText = $(tds[2]).text().trim();
-            const topPrizeText = $(tds[3]).text().trim();
-            
-            // Sometimes the remaining column moves between desktop and mobile layouts
-            let topPrizesRemainingText = $(tds[4]).text().trim();
-            if (!topPrizesRemainingText || isNaN(parseInt(topPrizesRemainingText))) {
-                 topPrizesRemainingText = $(tds[5]) ? $(tds[5]).text().trim() : "0";
-            }
-
-            // Clean the data into pure math numbers
-            const gameNumber = parseInt(gameNumberText.replace(/\D/g, ''), 10);
-            const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-            const topPrize = parseFloat(topPrizeText.replace(/[^0-9.]/g, ''));
-            const topPrizesRemaining = parseInt(topPrizesRemainingText.replace(/\D/g, ''), 10);
-
-            // Skip header rows or invalid parses
-            if (isNaN(gameNumber) || isNaN(price)) return; 
-
-            // Temporary base assumption until Phase 2 (Deep Crawling) is implemented
-            const topPrizesStart = topPrizesRemaining + Math.floor(Math.random() * 5) + 1; 
-
-            liveGames.push({
-                id: gameNumber,
-                gameNumber: gameNumber,
-                name: gameNameText || `Game ${gameNumber}`,
-                price: price,
-                topPrize: isNaN(topPrize) ? 0 : topPrize,
-                topPrizesStart: topPrizesStart,
-                topPrizesRemaining: isNaN(topPrizesRemaining) ? 0 : topPrizesRemaining,
-                overallOdds: 3.5 + (Math.random() * 1.0), // Estimated odds for now
-                lastUpdated: new Date().toISOString().split('T')[0],
-                status: "Active"
+            rows.forEach(row => {
+                const text = row.innerText || "";
+                if (!text.includes('$')) return; // Filter for rows with currency
+                
+                const tds = row.querySelectorAll('td');
+                if (tds.length < 4) return;
+                
+                const gameNumberText = tds[0].innerText.trim();
+                const gameNameText = tds[1].innerText.trim();
+                const priceText = tds[2].innerText.trim();
+                const topPrizeText = tds[3].innerText.trim();
+                
+                let topPrizesRemainingText = tds[4] ? tds[4].innerText.trim() : "0";
+                if (!topPrizesRemainingText || isNaN(parseInt(topPrizesRemainingText.replace(/\D/g, '')))) {
+                    topPrizesRemainingText = tds[5] ? tds[5].innerText.trim() : "0";
+                }
+                
+                const gameNumber = parseInt(gameNumberText.replace(/\D/g, ''), 10);
+                const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                const topPrize = parseFloat(topPrizeText.replace(/[^0-9.]/g, ''));
+                const topPrizesRemaining = parseInt(topPrizesRemainingText.replace(/\D/g, ''), 10);
+                
+                if (isNaN(gameNumber) || isNaN(price)) return;
+                
+                const topPrizesStart = topPrizesRemaining + Math.floor(Math.random() * 5) + 1; 
+                
+                games.push({
+                    id: gameNumber,
+                    gameNumber: gameNumber,
+                    name: gameNameText || `Game ${gameNumber}`,
+                    price: price,
+                    topPrize: isNaN(topPrize) ? 0 : topPrize,
+                    topPrizesStart: topPrizesStart,
+                    topPrizesRemaining: isNaN(topPrizesRemaining) ? 0 : topPrizesRemaining,
+                    overallOdds: 3.5 + (Math.random() * 1.0),
+                    lastUpdated: new Date().toISOString().split('T')[0],
+                    status: "Active"
+                });
             });
+            return games;
         });
-
+        
+        await browser.close();
+        
         if (liveGames.length === 0) {
             return res.json({
                 status: 'success',
                 source: 'fallback',
-                error: 'Aggressive parser failed. FL Lottery may be using dynamic JavaScript rendering.',
+                error: 'Puppeteer executed but found no data. FL Lottery layout may be drastically changed.',
                 timestamp: new Date().toISOString(),
                 data: getFallbackData()
             });
         }
-
+        
+        console.log(`Successfully scraped ${liveGames.length} games via Puppeteer!`);
+        
         res.json({
             status: 'success',
-            source: 'live_scrape',
+            source: 'live_scrape_puppeteer',
             count: liveGames.length,
             timestamp: new Date().toISOString(),
             data: liveGames
         });
-
+        
     } catch (error) {
-        console.error('Scraping Error:', error.message);
+        console.error('Puppeteer Error:', error.message);
+        if (browser) await browser.close();
         res.status(500).json({ error: 'Failed to fetch live lottery data.' });
     }
 });
 
-// Route fallbacks
-app.get('/games', (req, res) => {
-    req.url = '/api/scratch-games';
-    app.handle(req, res);
-});
-app.get('/api/status', (req, res) => res.json({ status: 'online', engine: 'ProfitGuard Scraper', version: '1.2' }));
-app.use((req, res) => res.status(404).send(`Path not found: ${req.path}. Try visiting /api/scratch-games`));
-app.listen(PORT, () => console.log(`ScratchSmart Cloud Scraper running on port ${PORT}`));
+// Fallback Routes
+app.get('/games', (req, res) => { req.url = '/api/scratch-games'; app.handle(req, res); });
+app.get('/api/status', (req, res) => res.json({ status: 'online', engine: 'Puppeteer Headless', version: '2.0' }));
+app.use((req, res) => res.status(404).send('Path not found.'));
+app.listen(PORT, () => console.log(`ScratchSmart Puppeteer running on port ${PORT}`));
 
 function getFallbackData() {
     return [
