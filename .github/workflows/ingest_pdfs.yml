@@ -1,6 +1,6 @@
 name: 1-Time Historical PDF Ingestion
 on:
-  workflow_dispatch: # This allows you to trigger it manually via a button
+  workflow_dispatch:
 
 jobs:
   ingest-history:
@@ -12,12 +12,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '18' # Downgraded for legacy pdf-parse compatibility
 
       - name: Install Dependencies
         run: |
           npm install
-          npm install pdf-parse
+          npm install pdf-parse@1.1.1 --no-fund
 
       - name: Run Deep PDF Extraction
         env:
