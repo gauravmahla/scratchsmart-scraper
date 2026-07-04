@@ -1,8 +1,8 @@
-name: Daily Lottery Scraper
+name: Hourly Lottery Scraper
 on:
   schedule:
-    - cron: '0 10 * * *' # Runs every day at 6:00 AM EST
-  workflow_dispatch: # Allows you to manually click a button to run it
+    - cron: '15 * * * *' # Wakes up at 15 minutes past every hour
+  workflow_dispatch:
 
 jobs:
   scrape-and-save:
@@ -18,6 +18,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+
+      # Adds a random delay between 1 and 120 seconds to evade WAF rhythm detection
+      - name: Stochastic Jitter Delay
+        run: sleep $((RANDOM % 120))
 
       - name: Run Scraper
         env:
