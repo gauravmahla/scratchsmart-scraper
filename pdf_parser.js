@@ -1,120 +1,80 @@
 /**
- * ScratchSmart SWFL - Deep Historical PDF Ingestion Engine v2.0
- * Architected for Node 18 LTS Compatibility & Fault Tolerance
+ * ScratchSmart SWFL - Omni-Search PDF Ingestion v3.0
+ * Recursively finds ANY .pdf file in the repository to prevent "Silent Skips".
  */
 const fs = require('fs');
+const path = require('path');
 const pdf = require('pdf-parse');
 const { createClient } = require('@supabase/supabase-js');
 
-// 1. Secret Validation Guardrail
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error("FATAL ERROR: Supabase connection keys are missing from the environment.");
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-const files = [
-    { name: 'p2.pdf', game: 'PICK_2' },
-    { name: 'p3.pdf', game: 'PICK_3' },
-    { name: 'p4.pdf', game: 'PICK_4' },
-    { name: 'p5.pdf', game: 'PICK_5' },
-    { name: 'ff.pdf', game: 'FANTASY_5' },
-    { name: 'cp.pdf', game: 'CASH_POP' },
-    { name: 'jtp.pdf', game: 'JACKPOT_TRIPLE_PLAY' },
-    { name: 'c4l.pdf', game: 'CASH4LIFE' },
-    { name: 'l6.pdf', game: 'FLORIDA_LOTTO' },
-    { name: 'mmil.pdf', game: 'MEGA_MILLIONS' }
-];
+// Find all PDFs in the current directory dynamically
+const files = fs.readdirSync(__dirname).filter(file => file.toLowerCase().endsWith('.pdf'));
 
 async function processPDFs() {
-    console.log("Initiating Deep Historical PDF Extraction Pipeline...");
+    console.log(`Omni-Search found ${files.length} PDF files:`, files);
+    
+    if (files.length === 0) {
+        console.error("FATAL: No PDFs found. You must upload the PDFs to the repository.");
+        process.exit(1); // Loud failure
+    }
+
+    let totalRowsPushed = 0;
 
     for (const file of files) {
-        if (!fs.existsSync(file.name)) {
-            console.log(`Skipping ${file.name} - File not found in current directory: ${process.cwd()}`);
-            continue;
-        }
-
-        console.log(`\n--- Parsing ${file.name} for ${file.game} ---`);
-        const dataBuffer = fs.readFileSync(file.name);
-
+        console.log(`\n--- Extracting ${file} ---`);
+        const dataBuffer = fs.readFileSync(path.join(__dirname, file));
+        
         try {
             const data = await pdf(dataBuffer);
-            const rawText = data.text.replace(/\r\n/g, '\n');
-            const lines = rawText.split('\n');
+            const lines = data.text.replace(/\r\n/g, '\n').split('\n');
             let parsedRows = [];
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
-                if (!line) continue;
-
-                // Match Date Format
                 const dateMatch = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+                
                 if (dateMatch) {
                     try {
                         let drawDate = new Date(dateMatch[0]);
-
-                        // Handle Y2K century rollover
                         if (dateMatch[0].length <= 8) {
                             const parts = dateMatch[0].split('/');
                             let year = parseInt(parts[2], 10);
                             year = year > 30 ? 1900 + year : 2000 + year;
                             drawDate = new Date(`${parts[0]}/${parts[1]}/${year}`);
                         }
-
-                        // FAULTSAFE: If date is corrupted, skip row
                         if (isNaN(drawDate.getTime())) continue; 
 
-                        let period = 'EVENING';
-                        const prevLine = lines[i-1] || "";
-                        const nextLine = lines[i+1] || "";
-                        const contextStr = (prevLine + " " + line + " " + nextLine).toUpperCase();
+                        const contextStr = ((lines[i-1]||"") + " " + line + " " + (lines[i+1]||"")).toUpperCase();
+                        let period = contextStr.includes('MIDDAY') || contextStr.includes(' M ') ? 'MIDDAY' : 'EVENING';
 
-                        if (contextStr.includes(' M ') || contextStr.includes('MIDDAY') || contextStr.includes('MORNING') || contextStr.includes('MATINEE')) period = 'MIDDAY';
-                        if (contextStr.includes('LATE NIGHT')) period = 'LATE_NIGHT';
-                        if (contextStr.includes('AFTERNOON')) period = 'AFTERNOON';
-
-                        const numberString = line.replace(dateMatch[0], '').replace(/[a-zA-Z]/g, '').trim();
-                        const extractedNumbers = numberString.match(/\d+/g) ? numberString.match(/\d+/g).map(Number) : [0];
+                        const numStr = line.replace(dateMatch[0], '').replace(/[A-Za-z]/g, '').trim();
+                        const nums = numStr.match(/\d+/g) ? numStr.match(/\d+/g).map(Number) : [0];
 
                         parsedRows.push({
-                            game_name: file.game,
+                            game_name: file.replace('.pdf', '').toUpperCase(),
                             draw_date: drawDate.toISOString().split('T')[0],
                             draw_period: period,
-                            winning_numbers: extractedNumbers.slice(0, 6),
-                            special_ball: extractedNumbers.length > 6 ? extractedNumbers[6] : null,
-                            multiplier: contextStr.includes('FB') ? 'FIREBALL' : (contextStr.includes('X') ? contextStr.match(/X\d/)?.[0] : null)
+                            winning_numbers: nums.slice(0, 6)
                         });
-                    } catch (parseErr) {
-                        // FAULTSAFE: Silently catch messy individual lines without crashing the script
-                        continue;
-                    }
+                    } catch (e) { continue; }
                 }
             }
 
-            console.log(`Extracted ${parsedRows.length} historical records. Pushing to Cloud Brain...`);
-
-            let successCount = 0;
             for (let i = 0; i < parsedRows.length; i += 500) {
                 const batch = parsedRows.slice(i, i + 500);
                 const { error } = await supabase.from('draw_game_history').insert(batch);
-                if (error) {
-                    console.error(`Supabase DB Error on ${file.game}:`, error.message);
-                } else {
-                    successCount += batch.length;
-                }
+                if (!error) totalRowsPushed += batch.length;
             }
-            console.log(`Successfully saved ${successCount} rows for ${file.game}.`);
-
+            console.log(`Pushed ${parsedRows.length} rows for ${file}`);
         } catch (err) {
-            console.error(`Fatal extraction failure on ${file.name}:`, err.message);
+            console.error(`Failed reading ${file}:`, err.message);
         }
     }
-    console.log("\nALL HISTORICAL DATA PIPELINES COMPLETED.");
+    
+    console.log(`\nFINAL TOTAL: ${totalRowsPushed} rows injected into Cloud Brain.`);
+    if (totalRowsPushed === 0) process.exit(1); // Fail loudly if nothing was pushed
+    process.exit(0);
 }
-
 processPDFs();
