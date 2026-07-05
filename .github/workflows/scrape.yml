@@ -1,30 +1,18 @@
-name: Hourly Lottery Scraper
-on:
-  schedule:
-    - cron: '15 * * * *' # Wakes up at 15 minutes past every hour
-  workflow_dispatch:
+name: The Nightly Synapse (Agent Swarm)on:schedule:- cron: '15 * * * *' # Wakes up at 15 minutes past every hourworkflow_dispatch:jobs:swarm-orchestration:runs-on: ubuntu-lateststeps:- name: Check out codeuses: actions/checkout@v4  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '22'
 
-jobs:
-  scrape-and-save:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+  - name: Install Dependencies
+    run: npm install
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+  # Adds a random delay between 1 and 120 seconds to evade WAF rhythm detection
+  - name: Stochastic Jitter Delay
+    run: sleep $((RANDOM % 120))
 
-      - name: Install Dependencies
-        run: npm install
-
-      # Adds a random delay between 1 and 120 seconds to evade WAF rhythm detection
-      - name: Stochastic Jitter Delay
-        run: sleep $((RANDOM % 120))
-
-      - name: Run Scraper
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: node scraper.js
+  - name: Execute Swarm Orchestrator
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    run: node swarm_orchestrator.js
+    
