@@ -17,6 +17,9 @@ async function runScraper() {
         console.log('Launching headless browser...');
         browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
+        
+        // CRITICAL FIX: Force 1080p desktop viewport so DataTables doesn't hide columns on mobile view
+        await page.setViewport({ width: 1920, height: 1080 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         console.log(`Navigating to target: ${FL_LOTTERY_URL}`);
@@ -24,6 +27,9 @@ async function runScraper() {
         
         console.log('Simulating human delay and bypassing pagination...');
         await randomDelay(3000, 5000);
+
+        // Ensure table is painted on the screen before proceeding
+        await page.waitForSelector('table tbody tr', { timeout: 10000 }).catch(e => console.log('Wait for selector bypassed...'));
 
         // ATTEMPT TO OVERRIDE PAGINATION (Force "Show All" entries)
         try {
@@ -48,37 +54,37 @@ async function runScraper() {
             
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 4) return; 
-
-                // COLUMN 1: "FLORIDA 300X THE CASH (#5048)"
-                const gameCell = cells[0]?.innerText.trim() || "";
-                // COLUMN 2: "$15,000,000"
-                const prizeCell = cells[1]?.innerText.trim() || "";
-                // COLUMN 3: "1 of 4"
-                const remainingCell = cells[2]?.innerText.trim() || "";
-                // COLUMN 4: "$30"
-                const priceCell = cells[3]?.innerText.trim() || "";
+                if (cells.length < 3) return; // Require at least 3 columns to be visible on 1080p
                 
-                // REGEX EXTRACTIONS
-                const gameMatch = gameCell.match(/(.+?)\s*\(#(\d+)\)/);
-                const remMatch = remainingCell.match(/(\d+)\s*of\s*(\d+)/i);
+                const col1 = cells[0]?.innerText || "";
+                const col2 = cells[1]?.innerText || "";
+                const col3 = cells[2]?.innerText || "";
+                const col4 = cells[3]?.innerText || "";
                 
-                if (!gameMatch || !remMatch) return; // Skip if it doesn't match the standard format
-
-                const gameName = gameMatch[1].trim();
-                const gameNumber = parseInt(gameMatch[2], 10);
+                // BULLETPROOF REGEX EXTRACTIONS
+                const idMatch = col1.match(/#(\d+)/);
+                if (!idMatch) return; 
+                
+                const gameNumber = parseInt(idMatch[1], 10);
+                const gameName = col1.split('(#')[0].trim();
+                
+                const remMatch = col3.match(/(\d+)\s*of\s*(\d+)/i);
+                if (!remMatch) return;
+                
                 const remaining = parseInt(remMatch[1], 10);
                 const total = parseInt(remMatch[2], 10);
-                const price = parseFloat(priceCell.replace(/[^0-9.]/g, ''));
+                
+                const priceMatch = col4.match(/\d+(\.\d+)?/);
+                const price = priceMatch ? parseFloat(priceMatch[0]) : 0;
 
                 // Aggregate by game ID (We only want the primary highest top prize tier for the dashboard view right now)
-                if (!gamesMap.has(gameNumber) && !isNaN(gameNumber) && !isNaN(price)) {
+                if (!gamesMap.has(gameNumber) && !isNaN(gameNumber) && price > 0) {
                     gamesMap.set(gameNumber, {
                         id: gameNumber, 
                         gameNumber: gameNumber, 
                         name: gameName,
                         price: price, 
-                        topPrizeValue: prizeCell,
+                        topPrizeValue: col2.trim(),
                         topPrizesStart: total, 
                         topPrizesRemaining: remaining, 
                         status: "Active"
