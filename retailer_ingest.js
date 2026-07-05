@@ -37,12 +37,19 @@ async function ingestRetailers() {
                 res.on('end', () => {
                     if (res.statusCode === 200) {
                         try { resolve(JSON.parse(body)); } 
-                        catch (e) { reject("JSON Parse Error: Server returned HTML."); }
+                        catch (e) { reject("JSON Parse Error"); }
                     } else { reject(`HTTP ${res.statusCode}`); }
                 });
             });
 
             req.on('error', (e) => reject(e.message));
+            
+            // STRICT 10-SECOND KILL SWITCH
+            req.setTimeout(10000, () => {
+                req.destroy();
+                reject("10-Second Hard Timeout: Satellite Unresponsive.");
+            });
+
             req.write(data);
             req.end();
         });
