@@ -1,4 +1,4 @@
-name: The Nightly Synapse (Agent Swarm)on:schedule:- cron: '15 * * * *' # Wakes up at 15 minutes past every hourworkflow_dispatch:jobs:swarm-orchestration:runs-on: ubuntu-lateststeps:- name: Check out codeuses: actions/checkout@v4  - name: Setup Node.js
+name: Autonomous Swarm Orchestratoron:schedule:- cron: '15 * * * *'workflow_dispatch:jobs:swarm-execution:runs-on: ubuntu-lateststeps:- name: Check out codeuses: actions/checkout@v4  - name: Setup Node.js
     uses: actions/setup-node@v4
     with:
       node-version: '22'
@@ -6,13 +6,11 @@ name: The Nightly Synapse (Agent Swarm)on:schedule:- cron: '15 * * * *' # Wakes 
   - name: Install Dependencies
     run: npm install
 
-  # Adds a random delay between 1 and 120 seconds to evade WAF rhythm detection
   - name: Stochastic Jitter Delay
     run: sleep $((RANDOM % 120))
 
-  - name: Execute Swarm Orchestrator
+  - name: Execute Multi-Agent Swarm
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-    run: node swarm_orchestrator.js
-    
+    run: node scraper.js
