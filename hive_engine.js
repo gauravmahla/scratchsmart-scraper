@@ -1,3 +1,4 @@
+// ================== START OF FILE ==================
 const { createClient } = require('@supabase/supabase-js');
 const WebSocket = require('ws'); 
 
@@ -124,4 +125,74 @@ async function runEngine() {
     console.log("🚀 Waking the Hive Mind (Final Increment: Council & Audit)...");
     try {
         const { data: history, error: fetchError } = await supabase
+            .from('f5_draws')
+            .select('*')
+            .order('id', { ascending: false }) 
+            .limit(180);
+
+        if (fetchError) throw fetchError;
+        runDataIntegrityGate(history);
+
+        const blindTargetRow = history[0]; 
+        const blindTargetNumbers = [
+            blindTargetRow["Winning Number 1"], blindTargetRow["Winning Number 2"], 
+            blindTargetRow["Winning Number 3"], blindTargetRow["Winning Number 4"], blindTargetRow["Winning Number 5"]
+        ];
         
+        const homeworkHistory = history.slice(1, 91); 
+        const strippedHomework = MinerEcosystem.stripData(homeworkHistory);
+
+        let blind_homework_results = {};
+        let miner_states = {};
+
+        // Miners Process
+        for (const [name, logic] of Object.entries(MinerEcosystem.agents)) {
+            let prediction = logic(strippedHomework);
+            let score = MinerEcosystem.score(prediction, blindTargetNumbers);
+            
+            blind_homework_results[name] = { prediction, actual: blindTargetNumbers, score };
+            miner_states[name] = {
+                status: score >= 35 ? "FLOW" : (score === 0 ? "SLUMP" : "NOMINAL"),
+                recent_blind_score: score
+            };
+        }
+
+        // Council & Audit Process
+        const councilOutput = runCouncilDebate(blind_homework_results);
+        const auditOutput = runAuditGovernor(miner_states);
+
+        // Final Master Payload
+        const engineState = {
+            cycle_id: `CYC-${Date.now()}`,
+            run_date: new Date().toISOString(),
+            data_quality: "VALIDATED",
+            hive_status: {
+                system_state: auditOutput.system_health,
+                overall_audit_score: auditOutput.overall_audit_score,
+                learning_velocity: "ACTIVE",
+                maturity_level: 1
+            },
+            feature_summary: buildFeatureBoard(homeworkHistory),
+            blind_homework_results: blind_homework_results,
+            miner_states: miner_states,
+            six_hat_council: councilOutput,
+            audit_governor: auditOutput,
+            telemetry_events: ["HEARTBEAT_RUN_COMPLETED", "SIX_HAT_COUNCIL_COMPLETED", "AUDIT_GOVERNOR_COMPLETED"]
+        };
+
+        console.log("💾 Appending Final Unified Cycle to Permanent Memory...");
+        const { error: stateError } = await supabase
+            .from('daily_mesh_state')
+            .insert({ cycle_id: engineState.cycle_id, state_payload: engineState });
+
+        if (stateError) throw stateError;
+        console.log("🎉 HIVE ENGINE FULLY LOCKED! Backend is complete.");
+        process.exit(0);
+    } catch (error) {
+        console.error(error.message);
+        process.exit(1);
+    }
+}
+
+runEngine();
+// ================== END OF FILE ==================
