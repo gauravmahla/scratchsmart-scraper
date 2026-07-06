@@ -71,27 +71,22 @@ const MinerEcosystem = {
 
     agents: {
         Quant: function(stripped) {
-            // Hot Numbers Focus
             let f = {};
             stripped.flat().forEach(n => f[n] = (f[n]||0)+1);
             let sorted = Object.keys(f).map(k => parseInt(k)).sort((a,b) => f[b] - f[a]);
             return sorted.slice(0, 5).sort((a,b)=>a-b);
         },
         Geometer: function(stripped) {
-            // Baseline Space Focus
             return [7, 14, 21, 28, 35];
         },
         Hacker: function(stripped) {
-            // Hacker mutation from recent draw
             let last = stripped[0]; 
             return last.map(n => n === 36 ? 1 : n + 1).sort((a,b)=>a-b); 
         },
         Surfer: function(stripped) {
-            // Momentum/Repeat Focus 
             return stripped[1] || [1,2,3,4,5];
         },
         Contrarian: function(stripped) {
-            // Due for reversion (Coldest numbers)
             let f = {};
             for(let i=1; i<=36; i++) f[i] = 0;
             stripped.flat().forEach(n => f[n]++);
@@ -155,16 +150,20 @@ async function runEngine() {
             feature_summary: buildFeatureBoard(homeworkHistory),
             blind_homework_results: blind_homework_results,
             miner_states: miner_states,
-            message: "Miners completed blind 91st-day homework. State updated."
+            message: "Miners completed blind 91st-day homework. State appended to permanent memory."
         };
 
-        console.log("💾 Writing State to Supabase...");
+        // 4. APPEND NEW CYCLE TO PERMANENT MEMORY (THE FIX)
+        console.log("💾 Appending New Cycle to Permanent Memory...");
         const { error: stateError } = await supabase
             .from('daily_mesh_state')
-            .upsert({ id: 1, state_payload: engineState, last_updated: new Date().toISOString() }, { onConflict: 'id' });
+            .insert({ 
+                cycle_id: engineState.cycle_id,
+                state_payload: engineState 
+            });
 
         if (stateError) throw stateError;
-        console.log("🎉 Increment 2 Complete!");
+        console.log("🎉 Increment 2 Complete and Memory Preserved!");
         process.exit(0);
     } catch (error) {
         console.error(error.message);
