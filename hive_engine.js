@@ -1,22 +1,21 @@
-require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// 1. Initialize Clients securely from GitHub Secrets
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// 1. Hardcoded Credentials (Private Repo Use Only)
+const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function runColdStart() {
-    console.log("🚀 Waking the Hive Mind...");
+    console.log("🚀 Waking the Hive Mind (Pure Math Engine)...");
 
     try {
-        // 2. Fetch the 90-Day Baseline using the exact UI column names
         console.log("📊 Fetching historical data for Cold Start...");
         const { data: history, error: fetchError } = await supabase
             .from('f5_draws')
             .select('*')
             .order('Draw Date', { ascending: false })
-            .limit(90); // 90-day cold start limit
+            .limit(90);
 
         if (fetchError) throw fetchError;
 
@@ -27,14 +26,13 @@ async function runColdStart() {
 
         console.log(`✅ Successfully loaded ${history.length} recent draws.`);
         
-        // Example of accessing your flexible naming convention
         const latestDraw = history[0];
         console.log(`Latest Draw Date: ${latestDraw["Draw Date"]} (${latestDraw["Draw Type"]})`);
 
         // 3. Compile the Initial State JSON (The Baseline)
         const initialState = {
             system_status: "🟢 ONLINE: Cold Start Baseline Established",
-            cli_score: 50.0, // Neutral starting Compound Learning Index
+            cli_score: 50.0,
             latest_analyzed_draw: {
                 date: latestDraw["Draw Date"],
                 type: latestDraw["Draw Type"],
@@ -47,14 +45,14 @@ async function runColdStart() {
                 ]
             },
             agent_nodes: {
-                quant: { status: "Initialized", confidence: 50, deep_dive_progress: "0%" },
-                geometer: { status: "Initialized", confidence: 50, deep_dive_progress: "0%" },
-                hacker: { status: "Initialized", confidence: 50, deep_dive_progress: "0%" },
-                surfer: { status: "Initialized", confidence: 50, deep_dive_progress: "0%" },
-                contrarian: { status: "Initialized", confidence: 50, deep_dive_progress: "0%" }
+                quant: { status: "Math Initialized", confidence: 50, deep_dive_progress: "0%" },
+                geometer: { status: "Math Initialized", confidence: 50, deep_dive_progress: "0%" },
+                hacker: { status: "Math Initialized", confidence: 50, deep_dive_progress: "0%" },
+                surfer: { status: "Math Initialized", confidence: 50, deep_dive_progress: "0%" },
+                contrarian: { status: "Math Initialized", confidence: 50, deep_dive_progress: "0%" }
             },
-            sniper_entries: [], // Empty until the first actual forward-test run
-            message: "Hive Mind has successfully connected to the database and established 90-day baselines."
+            sniper_entries: [], 
+            message: "Hive Mind has successfully connected to the database. Pure Math Engine active."
         };
 
         // 4. Inject the State into the empty daily_mesh_state table
