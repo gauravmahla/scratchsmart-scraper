@@ -1,6 +1,6 @@
 // ================== START OF FILE ==================
 const { createClient } = require('@supabase/supabase-js');
-const WebSocket = require('ws'); 
+const WebSocket = require('ws');
 
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
@@ -11,254 +11,258 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // ==========================================
-// 1. DATA INTEGRITY & FEATURES
+// 1. STRATIFIED KDD DATA INGESTION
 // ==========================================
-function runDataIntegrityGate(history) {
-    if (!history || history.length < 91) throw new Error("GATE_FAILED: Insufficient epochs (Need 91+).");
-    return true;
+async function fetchStratifiedEras() {
+    console.log("📡 Fetching Stratified KDD Blocks (Recent, Mid, Deep)...");
+    
+    // 1. Recent Block (Latest 90)
+    const { data: recent, error: err1 } = await supabase
+        .from('f5_draws').select('*').order('id', { ascending: false }).limit(90);
+    
+    // 2. Mid-History Block (Random 90 from mid-database)
+    const midOffset = Math.floor(Math.random() * 5000) + 1000;
+    const { data: mid, error: err2 } = await supabase
+        .from('f5_draws').select('*').order('id', { ascending: false }).range(midOffset, midOffset + 89);
+        
+    // 3. Deep-History Block (Random 90 from older database)
+    const deepOffset = Math.floor(Math.random() * 3000) + 7000;
+    const { data: deep, error: err3 } = await supabase
+        .from('f5_draws').select('*').order('id', { ascending: false }).range(deepOffset, deepOffset + 89);
+
+    if (err1 || err2 || err3) throw new Error("Database fetch failed during stratification.");
+    
+    return { recent, mid, deep };
 }
 
-function buildFeatureBoard(historyBlock) {
-    let freq = {};
-    let middayCount = 0;
-    let eveningCount = 0;
-    
-    for(let i=1; i<=36; i++) freq[i] = 0;
-    
-    historyBlock.forEach(row => {
-        // Feature: Draw Type Context
-        if(row["Draw Time"] === "Midday") middayCount++;
-        if(row["Draw Time"] === "Evening") eveningCount++;
+function extractNumbers(row) {
+    return [
+        row["Winning Number 1"], row["Winning Number 2"], 
+        row["Winning Number 3"], row["Winning Number 4"], row["Winning Number 5"]
+    ].sort((a,b) => a-b);
+}
 
-        [1,2,3,4,5].forEach(num => {
-            let val = row[`Winning Number ${num}`];
-            if(val >= 1 && val <= 36) freq[val]++;
-        });
+function isolateRegime(block, drawType) {
+    return block.filter(row => row["Draw Time"] === drawType).map(extractNumbers);
+}
+
+// ==========================================
+// 2. DUAL-STATE MEMORY (POST-DRAW REFLECTION)
+// ==========================================
+async function performPostDrawReflection(latestOfficialRow) {
+    console.log("🪞 Initiating Post-Draw Reflection State...");
+    
+    // Fetch the Hive's LAST prediction
+    const { data: lastState, error } = await supabase
+        .from('daily_mesh_state').select('state_payload').order('id', { ascending: false }).limit(1);
+
+    if (error || !lastState || lastState.length === 0) {
+        return { status: "SKIPPED", reason: "No prior staging memory found to reflect upon." };
+    }
+
+    const previousPrediction = lastState[0].state_payload?.six_hat_council?.council_consensus_entry || [];
+    if (previousPrediction.length !== 5) return { status: "SKIPPED", reason: "Previous prediction invalid." };
+
+    const actualNumbers = extractNumbers(latestOfficialRow);
+    
+    let matched = [];
+    let missed = [];
+    previousPrediction.forEach(num => {
+        if (actualNumbers.includes(num)) matched.push(num);
+        else missed.push(num);
     });
 
-    let freqArr = Object.keys(freq).map(k => ({ n: parseInt(k), c: freq[k] })).sort((a,b) => b.c - a.c);
-    let expectedBaseline = (historyBlock.length * 5) / 36;
+    // Rulebook scoring baseline
+    const matchTiers = {0: 0, 1: 0, 2: 10, 3: 40, 4: 80, 5: 100};
+    const finalScore = matchTiers[matched.length] || 0;
 
     return {
-        hot_numbers: freqArr.slice(0, 5).map(x => x.n),
-        cold_numbers: freqArr.slice(-5).map(x => x.n),
-        expected_baseline_frequency: Number(expectedBaseline.toFixed(2)),
-        draw_context_split: { midday: middayCount, evening: eveningCount }
+        status: "COMPLETED",
+        target_draw: latestOfficialRow["Draw Time"],
+        target_date: latestOfficialRow["Date"],
+        predicted: previousPrediction,
+        actual: actualNumbers,
+        matched: matched,
+        missed: missed,
+        match_count: matched.length,
+        match_category: `${matched.length}-of-5`,
+        confidence_delta_applied: finalScore >= 40 ? "+15%" : (finalScore === 0 ? "-10%" : "0% (Baseline Maintained)")
     };
 }
 
 // ==========================================
-// 2. MINER ECOSYSTEM (Rulebook Grounded)
+// 3. MINER ECOSYSTEM & LENSES
 // ==========================================
 const MinerEcosystem = {
-    stripData: function(historyBlock) {
-        return historyBlock.map(row => [
-            row["Winning Number 1"], row["Winning Number 2"], 
-            row["Winning Number 3"], row["Winning Number 4"], row["Winning Number 5"]
-        ].sort((a,b) => a-b));
+    // Generates a valid 1-36 array guaranteeing exactly 5 unique numbers
+    enforceRulebook: function(arr) {
+        let clean = arr.map(n => {
+            let num = parseInt(n);
+            if (isNaN(num) || num < 1) return 1;
+            if (num > 36) return num % 36 || 36;
+            return num;
+        });
+        let unique = [...new Set(clean)];
+        let fill = 1;
+        while(unique.length < 5) {
+            if(!unique.includes(fill)) unique.push(fill);
+            fill++;
+        }
+        return unique.slice(0, 5).sort((a,b) => a-b);
     },
-    
-    scoreBlindTest: function(prediction, actual) {
-        let hits = 0;
-        prediction.forEach(p => { if (actual.includes(p)) hits++; });
-        
-        // Exact Rulebook Overlap
-        const matchTiers = {0: 0, 1: 0, 2: 10, 3: 40, 4: 80, 5: 100};
-        
-        return {
-            score: matchTiers[hits] || 0,
-            matches: hits
-        };
-    },
-    
+
     agents: {
-        Quant: function(stripped) {
+        Quant: function(regimeArray) {
             let f = {};
-            stripped.flat().forEach(n => f[n] = (f[n]||0)+1);
-            let sorted = Object.keys(f).map(k => parseInt(k)).sort((a,b) => f[b] - f[a]);
-            return {
-                prediction: sorted.slice(0, 5).sort((a,b)=>a-b),
-                telemetry_tag: "HISTORICAL_FREQUENCY_PEAK"
-            };
+            regimeArray.flat().forEach(n => f[n] = (f[n]||0)+1);
+            let sorted = Object.keys(f).sort((a,b) => f[b] - f[a]);
+            return MinerEcosystem.enforceRulebook(sorted.slice(0, 5));
         },
-        Geometer: function(stripped) {
-            let totalGaps = 0, gapCount = 0;
-            stripped.forEach(row => {
-                for(let i=0; i<4; i++) {
-                    totalGaps += (row[i+1] - row[i]);
-                    gapCount++;
-                }
+        Geometer: function(regimeArray) {
+            let totalGaps = 0, count = 0;
+            regimeArray.forEach(row => {
+                for(let i=0; i<4; i++) { totalGaps += (row[i+1] - row[i]); count++; }
             });
-            let avgGap = Math.max(1, Math.round(totalGaps / gapCount));
-            let start = 2; 
-            let pred = [start, start + avgGap, start + (avgGap*2), start + (avgGap*3), start + (avgGap*4)];
-            pred = pred.map(n => n > 36 ? (n % 36) || 36 : n);
-            let uniquePred = [...new Set(pred)];
-            let fill = 1;
-            while(uniquePred.length < 5) {
-                if(!uniquePred.includes(fill)) uniquePred.push(fill);
-                fill++;
-            }
-            return {
-                prediction: uniquePred.sort((a,b)=>a-b),
-                telemetry_tag: "SPATIAL_CLUSTER_DETECTED"
-            };
+            let avg = Math.max(1, Math.round(totalGaps/count));
+            let s = regimeArray[0]?.[0] || 2;
+            return MinerEcosystem.enforceRulebook([s, s+avg, s+(avg*2), s+(avg*3), s+(avg*4)]);
         },
-        Hacker: function(stripped) {
-            let last = stripped[0]; 
-            let pred = last.map(n => n === 36 ? 1 : n + 1);
-            return {
-                prediction: pred.sort((a,b)=>a-b),
-                telemetry_tag: "SEQUENTIAL_ANOMALY_EXPLOIT"
-            };
+        Hacker: function(regimeArray) {
+            let last = regimeArray[0] || [1,2,3,4,5];
+            return MinerEcosystem.enforceRulebook(last.map(n => n + 1));
         },
-        Surfer: function(stripped) { 
-            return {
-                prediction: stripped[1] || [1,2,3,4,5],
-                telemetry_tag: "3_DAY_MOMENTUM_CARRYOVER"
-            };
-        },
-        Contrarian: function(stripped) {
+        Contrarian: function(regimeArray) {
             let f = {};
             for(let i=1; i<=36; i++) f[i] = 0;
-            stripped.flat().forEach(n => f[n]++);
-            let sorted = Object.keys(f).map(k => parseInt(k)).sort((a,b) => f[a] - f[b]);
-            return {
-                prediction: sorted.slice(0, 5).sort((a,b)=>a-b),
-                telemetry_tag: "MEAN_REVERSION_DEBT"
-            };
+            regimeArray.flat().forEach(n => f[n]++);
+            let sorted = Object.keys(f).sort((a,b) => f[a] - f[b]);
+            return MinerEcosystem.enforceRulebook(sorted.slice(0, 5));
+        },
+        // The New Phase 3 Agent
+        SameDayBridge: function(fullRecentBlock) {
+            // Looks for numbers that fell in the last Midday to carry into Evening
+            let lastMidday = fullRecentBlock.find(r => r["Draw Time"] === "Midday");
+            if (!lastMidday) return MinerEcosystem.enforceRulebook([7,14,21,28,35]);
+            let nums = extractNumbers(lastMidday);
+            // Bridge hypothesis: 2 numbers repeat, 3 shift by +1
+            let bridged = [nums[0], nums[1], nums[2]+1, nums[3]+1, nums[4]+1];
+            return MinerEcosystem.enforceRulebook(bridged);
         }
     }
 };
 
 // ==========================================
-// 3. SIX-HAT COUNCIL (Weighted Voting Matrix)
+// 4. PORTFOLIO MANAGER (10-Panel Rulebook Compliance)
 // ==========================================
-function runCouncilDebate(minerResults, tieBreakerAgent) {
-    let voteMatrix = {};
-    for(let i=1; i<=36; i++) voteMatrix[i] = 0;
-    
-    Object.values(minerResults).forEach(result => {
-        result.prediction.forEach(num => { voteMatrix[num] += 1; });
+function build10PanelPortfolio(minerKpis) {
+    let portfolio = {};
+    let panelCount = 1;
+
+    // Panel 1: Master Consensus (Most overlapped numbers across all agents)
+    let heatMap = {};
+    Object.values(minerKpis).forEach(agent => {
+        agent.predicted.forEach(num => heatMap[num] = (heatMap[num] || 0) + 1);
+    });
+    let consensus = Object.keys(heatMap).sort((a,b) => heatMap[b] - heatMap[a]).slice(0, 5);
+    portfolio[`Panel_A`] = { type: "Master Consensus", numbers: MinerEcosystem.enforceRulebook(consensus) };
+
+    // Panels B-F: Individual Agent specialized vectors
+    const labels = ["Frequency Lift", "Spatial Cluster", "Entropy Anomaly", "Mean Reversion", "Midday-Evening Bridge"];
+    Object.keys(MinerEcosystem.agents).forEach((agentName, idx) => {
+        portfolio[`Panel_${String.fromCharCode(66 + idx)}`] = { 
+            type: `${agentName} (${labels[idx]})`, 
+            numbers: minerKpis[agentName].predicted 
+        };
     });
 
-    let sortedByWeight = Object.keys(voteMatrix)
-        .map(num => parseInt(num))
-        .sort((a, b) => {
-            let weightDiff = voteMatrix[b] - voteMatrix[a];
-            if (weightDiff !== 0) return weightDiff;
-            let tieBreakerVector = minerResults[tieBreakerAgent]?.prediction || [];
-            if (tieBreakerVector.includes(a) && !tieBreakerVector.includes(b)) return -1;
-            if (tieBreakerVector.includes(b) && !tieBreakerVector.includes(a)) return 1;
-            return a - b; 
-        });
+    // Panels G-J: Diversification (Ensuring we fill the 10-panel playslip rule)
+    while(Object.keys(portfolio).length < 10) {
+        let shift = Object.keys(portfolio).length;
+        let altVector = consensus.map(n => parseInt(n) + shift);
+        portfolio[`Panel_${String.fromCharCode(65 + Object.keys(portfolio).length)}`] = {
+            type: "Risk-Adjusted Variant",
+            numbers: MinerEcosystem.enforceRulebook(altVector)
+        };
+    }
 
-    let top5 = sortedByWeight.slice(0, 5).sort((a,b) => a-b);
-    let tieBreakRequired = voteMatrix[top5[4]] < 2;
-
-    return {
-        council_consensus_entry: top5,
-        debate_status: voteMatrix[top5[4]] >= 2 ? "STRONG_CONSENSUS" : "TIE_BREAK_FORCED",
-        tie_break_utilized: tieBreakRequired,
-        vetoed_anomalies: sortedByWeight.slice(-5) 
-    };
+    return portfolio;
 }
 
 // ==========================================
-// MAIN ENGINE EXECUTION
+// 5. MAIN ENGINE EXECUTION
 // ==========================================
 async function runEngine() {
-    console.log("🚀 Waking the Hive Mind (Phase 2: Full XAI Telemetry)...");
+    console.log("🚀 Waking the Hive Mind (Phase 3: KDD Stratified & Dual-State)...");
     try {
-        const { data: history, error: fetchError } = await supabase
-            .from('f5_draws')
-            .select('*')
-            .order('id', { ascending: false })
-            .limit(180);
+        const eras = await fetchStratifiedEras();
+        if (eras.recent.length === 0) throw new Error("Recent block empty.");
 
-        if (fetchError) throw fetchError;
-        runDataIntegrityGate(history);
+        const latestDraw = eras.recent[0];
+        const nextTargetRegime = latestDraw["Draw Time"] === "Midday" ? "Evening" : "Midday";
+        console.log(`🎯 Target Forward Regime: ${nextTargetRegime}`);
 
-        const blindTargetRow = history[0]; 
-        const blindTargetNumbers = [
-            blindTargetRow["Winning Number 1"], blindTargetRow["Winning Number 2"], 
-            blindTargetRow["Winning Number 3"], blindTargetRow["Winning Number 4"], blindTargetRow["Winning Number 5"]
-        ];
-        
-        const homeworkHistory = history.slice(1, 91); 
-        const strippedHomework = MinerEcosystem.stripData(homeworkHistory);
+        // 1. Execute Dual-State Post-Draw Reflection
+        const reflection = await performPostDrawReflection(latestDraw);
 
+        // 2. KDD Data Mining (Forward Intel)
         let miner_kpis = {};
-        let highestScoringAgent = "Quant"; 
-        let highestScore = -1;
-        let worstScoringAgent = "Quant";
-        let lowestScore = 101;
+        let isolatedRegime = isolateRegime(eras.recent, nextTargetRegime);
 
         for (const [name, logic] of Object.entries(MinerEcosystem.agents)) {
-            let agentOutput = logic(strippedHomework);
-            let testResult = MinerEcosystem.scoreBlindTest(agentOutput.prediction, blindTargetNumbers);
+            let prediction;
+            if (name === "SameDayBridge") {
+                prediction = logic(eras.recent); // Bridge needs full context
+            } else {
+                prediction = logic(isolatedRegime); // Others use isolated regime
+            }
             
             miner_kpis[name] = {
-                prediction: agentOutput.prediction,
-                score: testResult.score,
-                exact_matches: testResult.matches,
-                primary_trigger: agentOutput.telemetry_tag,
-                status: testResult.score >= 40 ? "FLOW" : (testResult.score === 0 ? "SLUMP" : "NOMINAL"),
-                evidence_chain: `Tested against ${homeworkHistory.length} rows. Applied ${agentOutput.telemetry_tag} logic.`
+                predicted: prediction,
+                target_regime: nextTargetRegime,
+                evidence_chain: {
+                    historical_window_used: "RECENT_90_ISOLATED",
+                    methodology_applied: name,
+                    rulebook_compliant: true
+                }
             };
-
-            if (testResult.score > highestScore) { highestScore = testResult.score; highestScoringAgent = name; }
-            if (testResult.score < lowestScore) { lowestScore = testResult.score; worstScoringAgent = name; }
         }
 
-        const councilOutput = runCouncilDebate(miner_kpis, highestScoringAgent);
-        
-        let auditScore = 50 + (highestScore / 2);
+        // 3. Build 10-Panel Rulebook Playslip
+        const portfolio = build10PanelPortfolio(miner_kpis);
 
+        // 4. Assemble Phase 3 Payload
         const engineState = {
-            schema_version: "PHASE_2_RULEBOOK_GROUNDED",
+            schema_version: "PHASE_3_KDD_STRATIFIED",
             cycle_id: `CYC-${Date.now()}`,
             run_date: new Date().toISOString(),
-            system_metrics: { epoch_count: history.length },
+            target_draw_type: nextTargetRegime,
             
             rule_compliance: {
                 exactly_five_numbers: true,
-                combination_only: true
+                combination_only: true,
+                ten_panel_limit_enforced: true
             },
+            
+            retro_ledger: reflection,
+            miner_kpis: miner_kpis,
+            playslip_portfolio: portfolio,
             
             daily_standup: {
-                best_miner_today: highestScoringAgent,
-                worst_miner_today: worstScoringAgent,
-                top_learning: `${highestScoringAgent} validated its ${miner_kpis[highestScoringAgent].primary_trigger} hypothesis.`,
-                top_risk: councilOutput.tie_break_utilized ? "Weak overall network consensus required tie-break." : "None. Strong consensus achieved.",
-                system_health: auditScore >= 60 ? "NOMINAL" : "VOLATILE",
-                overall_audit_score: auditScore
-            },
-            
-            feature_factory: buildFeatureBoard(homeworkHistory),
-            miner_kpis: miner_kpis,
-            six_hat_council: councilOutput,
-            
-            hypothesis_activity: [
-                { owner: highestScoringAgent, status: "PROMOTED", method: miner_kpis[highestScoringAgent].primary_trigger }
-            ],
-            
-            historic_leadership: {
-                current_leader: highestScoringAgent,
-                caveat: "EARLY_SIGNAL: Insufficient Epochs for Durable Leadership"
+                status: "KDD_COMPLETE",
+                reflection_logged: reflection.status === "COMPLETED",
+                top_learning: reflection.status === "COMPLETED" ? `Previous cycle matched ${reflection.match_count} numbers.` : "Initializing staging memory."
             }
         };
 
-        // Injecting the raw export block for MLOps UI extraction
         engineState.developer_export = JSON.stringify(engineState);
 
-        console.log("💾 Appending Rulebook-Grounded Cycle to Permanent Memory...");
+        console.log("💾 Appending Phase 3 KDD Cycle to Permanent Memory...");
         const { error: stateError } = await supabase
             .from('daily_mesh_state')
             .insert({ cycle_id: engineState.cycle_id, state_payload: engineState });
 
         if (stateError) throw stateError;
-        console.log("🎉 PHASE 2 ENGINE LOCKED! Telemetry payload dispatched.");
+        console.log("🎉 PHASE 3 ENGINE LOCKED! Dual-State payload dispatched.");
         process.exit(0);
     } catch (error) {
         console.error("FATAL ERROR: ", error.message);
