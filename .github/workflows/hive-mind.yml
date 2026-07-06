@@ -1,12 +1,9 @@
 name: Neural Mesh Hive Mind
 
 on:
-  # Cron schedules run autonomously after the manual UI entry window
   schedule:
     - cron: '30 17 * * *' # ~1:30 PM ET (Midday Run)
     - cron: '30 3 * * *'  # ~11:30 PM ET (Evening Run - UTC next day)
-  
-  # Crucial: Allows us to manually click a button to run the Cold Start right now
   workflow_dispatch: 
 
 jobs:
@@ -22,13 +19,9 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Install Math & DB Libraries
+    - name: Install Database Libraries
       run: npm install
 
     - name: Run Hive Engine
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: node hive_engine.js
-
+      
