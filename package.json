@@ -1,11 +1,9 @@
 {
   "name": "f5-neural-mesh",
   "version": "1.0.0",
-  "description": "Autonomous Hive Mind Engine",
+  "description": "Autonomous Hive Mind Engine - Pure Math",
   "main": "hive_engine.js",
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "@google/generative-ai": "^0.2.1",
-    "dotenv": "^16.4.5"
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
