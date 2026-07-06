@@ -1,19 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
-const WebSocket = require('ws'); // THE FIX: Explicitly require the WebSocket library
+const WebSocket = require('ws'); 
 
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 
-// THE FIX: Explicitly inject the WebSocket into the Supabase global options
+// THE FIX: Injecting the WebSocket directly into the realtime transport option.
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    global: {
-        fetch: fetch,
-        WebSocket: WebSocket 
-    },
     auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
+    },
+    realtime: {
+        transport: WebSocket
     }
 });
 
