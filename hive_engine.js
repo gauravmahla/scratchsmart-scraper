@@ -17,7 +17,6 @@ async function runColdStart() {
     try {
         console.log("📊 Fetching historical data for Cold Start...");
         
-        // SAFEGUARD: Ordering by 'id' to avoid URL-encoding bugs with spaces in "Draw Date"
         const { data: history, error: fetchError } = await supabase
             .from('f5_draws')
             .select('*')
@@ -28,7 +27,7 @@ async function runColdStart() {
 
         if (!history || history.length === 0) {
             console.log("⚠️ No data found. Check Supabase RLS policies.");
-            return;
+            process.exit(1); // BEST PRACTICE: Explicit failure exit
         }
 
         console.log(`✅ Successfully loaded ${history.length} recent draws.`);
@@ -70,16 +69,19 @@ async function runColdStart() {
                 last_updated: new Date().toISOString()
             }, { onConflict: 'id' });
 
-        // SAFEGUARD: Identify RLS blockades automatically
         if (stateError) {
-             console.error("🚨 Database Write Error. (If RLS violation, run 'ALTER TABLE daily_mesh_state DISABLE ROW LEVEL SECURITY;' in Supabase SQL).");
+             console.error("🚨 Database Write Error. (RLS Violation).");
              throw stateError;
         }
 
         console.log("🎉 Cold Start Complete! Hive is ready.");
+        
+        // THE FIX: Explicitly terminate the Node process to prevent the server from hanging
+        process.exit(0);
 
     } catch (error) {
         console.error("🚨 Critical Hive Error:", error);
+        // THE FIX: Explicitly terminate with an error code to immediately stop the GitHub Action
         process.exit(1);
     }
 }
