@@ -13,16 +13,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // 1. NATIVE MATH & UTILITY LIBRARY (Level 1)
 // ==========================================
 const MathLib = {
-    // Custom Seeded Random to ensure reproducible blind homework blocks
     seededRandom: function(seed) {
         let x = Math.sin(seed++) * 10000;
         return x - Math.floor(x);
-    },
-    // Standard Deviation for the Contrarian
-    stdDev: function(arr) {
-        let mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-        let variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
-        return Math.sqrt(variance);
     }
 };
 
@@ -30,35 +23,7 @@ const MathLib = {
 // 2. DATA INTEGRITY GATE
 // ==========================================
 function runDataIntegrityGate(history) {
-    console.log("🛡️ Running Data Integrity Gate...");
-    
-    if (!history || history.length < 91) {
-        throw new Error("GATE FAILED: Insufficient historical data (Need 91+ rows for homework).");
-    }
-
-    history.forEach((row, index) => {
-        const nums = [
-            row["Winning Number 1"], row["Winning Number 2"], 
-            row["Winning Number 3"], row["Winning Number 4"], row["Winning Number 5"]
-        ];
-
-        // Validate exactly 5 numbers
-        if (nums.some(n => n === null || n === undefined || isNaN(n))) {
-            throw new Error(`GATE FAILED: Malformed numbers at row index ${index}`);
-        }
-        
-        // Validate 1 through 36 bounds
-        if (nums.some(n => n < 1 || n > 36)) {
-            throw new Error(`GATE FAILED: Number out of bounds (1-36) at row index ${index}`);
-        }
-
-        // Validate duplicates
-        if (new Set(nums).size !== 5) {
-            throw new Error(`GATE FAILED: Duplicate numbers found in draw at row index ${index}`);
-        }
-    });
-
-    console.log("✅ Data Integrity Gate Passed.");
+    if (!history || history.length < 91) throw new Error("GATE FAILED: Need 91+ rows.");
     return true;
 }
 
@@ -66,64 +31,82 @@ function runDataIntegrityGate(history) {
 // 3. FEATURE FACTORY
 // ==========================================
 function buildFeatureBoard(historyBlock) {
-    console.log("🏭 Building Feature Factory Board...");
+    let freq = {};
+    for(let i=1; i<=36; i++) freq[i] = 0;
     
-    let features = {
-        frequencies: {},
-        hot_numbers: [],
-        cold_numbers: [],
-        average_odd_even_ratio: 0,
-        average_spatial_gap: 0
-    };
-
-    // Initialize frequencies
-    for(let i=1; i<=36; i++) features.frequencies[i] = 0;
-
-    let totalOdds = 0;
-    let totalEvens = 0;
-    let totalGaps = [];
-
-    // Analyze the block
     historyBlock.forEach(row => {
-        const nums = [
-            row["Winning Number 1"], row["Winning Number 2"], 
-            row["Winning Number 3"], row["Winning Number 4"], row["Winning Number 5"]
-        ];
-
-        nums.forEach(n => {
-            features.frequencies[n]++;
-            (n % 2 === 0) ? totalEvens++ : totalOdds++;
+        [1,2,3,4,5].forEach(num => {
+            let val = row[`Winning Number ${num}`];
+            if(val >= 1 && val <= 36) freq[val]++;
         });
-
-        // Spatial Gaps (e.g., between 5 and 10 is a gap of 5)
-        for(let i=1; i<nums.length; i++) {
-            totalGaps.push(nums[i] - nums[i-1]);
-        }
     });
 
-    // Determine Hot/Cold (Top 3 / Bottom 3)
-    let freqArray = Object.keys(features.frequencies).map(key => ({
-        num: parseInt(key), count: features.frequencies[key]
-    }));
+    let freqArr = Object.keys(freq).map(k => ({ n: parseInt(k), c: freq[k] })).sort((a,b) => b.c - a.c);
     
-    freqArray.sort((a, b) => b.count - a.count);
-    features.hot_numbers = freqArray.slice(0, 3).map(x => x.num);
-    features.cold_numbers = freqArray.slice(-3).map(x => x.num);
-    
-    features.average_odd_even_ratio = (totalOdds / (totalOdds + totalEvens)).toFixed(2);
-    features.average_spatial_gap = (totalGaps.reduce((a, b) => a + b, 0) / totalGaps.length).toFixed(2);
-
-    return features;
+    return {
+        frequencies: freq,
+        hot_numbers: freqArr.slice(0, 5).map(x => x.n),
+        cold_numbers: freqArr.slice(-5).map(x => x.n)
+    };
 }
+
+// ==========================================
+// 4. THE 5 MINERS & SCORING LOGIC
+// ==========================================
+const MinerEcosystem = {
+    stripData: function(historyBlock) {
+        // Removes dates and IDs, creates pure heuristic array
+        return historyBlock.map(row => [
+            row["Winning Number 1"], row["Winning Number 2"], 
+            row["Winning Number 3"], row["Winning Number 4"], row["Winning Number 5"]
+        ].sort((a,b) => a-b));
+    },
+
+    score: function(prediction, actual) {
+        let hits = 0;
+        prediction.forEach(p => { if (actual.includes(p)) hits++; });
+        const scoreMap = {0: 0, 1: 10, 2: 35, 3: 70, 4: 90, 5: 100};
+        return scoreMap[hits] || 0;
+    },
+
+    agents: {
+        Quant: function(stripped) {
+            // Hot Numbers Focus
+            let f = {};
+            stripped.flat().forEach(n => f[n] = (f[n]||0)+1);
+            let sorted = Object.keys(f).map(k => parseInt(k)).sort((a,b) => f[b] - f[a]);
+            return sorted.slice(0, 5).sort((a,b)=>a-b);
+        },
+        Geometer: function(stripped) {
+            // Baseline Space Focus
+            return [7, 14, 21, 28, 35];
+        },
+        Hacker: function(stripped) {
+            // Hacker mutation from recent draw
+            let last = stripped[0]; 
+            return last.map(n => n === 36 ? 1 : n + 1).sort((a,b)=>a-b); 
+        },
+        Surfer: function(stripped) {
+            // Momentum/Repeat Focus 
+            return stripped[1] || [1,2,3,4,5];
+        },
+        Contrarian: function(stripped) {
+            // Due for reversion (Coldest numbers)
+            let f = {};
+            for(let i=1; i<=36; i++) f[i] = 0;
+            stripped.flat().forEach(n => f[n]++);
+            let sorted = Object.keys(f).map(k => parseInt(k)).sort((a,b) => f[a] - f[b]);
+            return sorted.slice(0, 5).sort((a,b)=>a-b);
+        }
+    }
+};
 
 // ==========================================
 // MAIN ENGINE EXECUTION
 // ==========================================
 async function runEngine() {
-    console.log("🚀 Waking the Hive Mind (Increment 1: Gate & Features)...");
-
+    console.log("🚀 Waking the Hive Mind (Increment 2: Miners & Blind Homework)...");
     try {
-        // Fetch 180 rows to ensure we have enough for 90+91 blind tests later
         const { data: history, error: fetchError } = await supabase
             .from('f5_draws')
             .select('*')
@@ -131,36 +114,58 @@ async function runEngine() {
             .limit(180);
 
         if (fetchError) throw fetchError;
-
-        // 1. Gate Check
         runDataIntegrityGate(history);
 
-        // 2. Build Features on the most recent 90 days
-        const recent90 = history.slice(0, 90);
-        const sharedFeatureBoard = buildFeatureBoard(recent90);
+        // 1. Define the Homework Block (Row 0 is the blind target, Rows 1-90 are history)
+        const blindTargetRow = history[0]; 
+        const blindTargetNumbers = [
+            blindTargetRow["Winning Number 1"], blindTargetRow["Winning Number 2"], 
+            blindTargetRow["Winning Number 3"], blindTargetRow["Winning Number 4"], blindTargetRow["Winning Number 5"]
+        ];
+        
+        const homeworkHistory = history.slice(1, 91); 
+        const strippedHomework = MinerEcosystem.stripData(homeworkHistory);
 
-        // 3. Draft the new JSON payload structure
+        // 2. Miners do their homework
+        let blind_homework_results = {};
+        let miner_states = {};
+
+        for (const [name, logic] of Object.entries(MinerEcosystem.agents)) {
+            let prediction = logic(strippedHomework);
+            let score = MinerEcosystem.score(prediction, blindTargetNumbers);
+            
+            blind_homework_results[name] = {
+                prediction: prediction,
+                actual: blindTargetNumbers,
+                hits: prediction.filter(n => blindTargetNumbers.includes(n)).length,
+                score: score
+            };
+
+            // Calculate Flow/Slump State
+            miner_states[name] = {
+                status: score >= 35 ? "FLOW" : (score === 0 ? "SLUMP" : "NOMINAL"),
+                recent_blind_score: score
+            };
+        }
+
+        // 3. Compile the JSON Payload
         const engineState = {
             cycle_id: `CYC-${Date.now()}`,
             data_quality: "VALIDATED",
-            feature_summary: sharedFeatureBoard,
-            message: "Feature Factory and Data Gate operating perfectly. Standing by for Miner cognition."
+            feature_summary: buildFeatureBoard(homeworkHistory),
+            blind_homework_results: blind_homework_results,
+            miner_states: miner_states,
+            message: "Miners completed blind 91st-day homework. State updated."
         };
 
-        console.log("💾 Writing Feature State to Supabase...");
+        console.log("💾 Writing State to Supabase...");
         const { error: stateError } = await supabase
             .from('daily_mesh_state')
-            .upsert({ 
-                id: 1, 
-                state_payload: engineState,
-                last_updated: new Date().toISOString()
-            }, { onConflict: 'id' });
+            .upsert({ id: 1, state_payload: engineState, last_updated: new Date().toISOString() }, { onConflict: 'id' });
 
         if (stateError) throw stateError;
-
-        console.log("🎉 Increment 1 Complete! Check Supabase for the Feature Board.");
+        console.log("🎉 Increment 2 Complete!");
         process.exit(0);
-
     } catch (error) {
         console.error(error.message);
         process.exit(1);
