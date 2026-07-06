@@ -1,18 +1,11 @@
 {
-  "name": "scratchsmart-scraper",
-  "version": "2.0.0",
-  "description": "Puppeteer Scraper and Supabase Pipeline for ScratchSmart SWFL",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "name": "f5-neural-mesh",
+  "version": "1.0.0",
+  "description": "Autonomous Hive Mind Engine",
+  "main": "hive_engine.js",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "puppeteer": "^22.0.0",
-    "@supabase/supabase-js": "^2.44.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "@google/generative-ai": "^0.2.1",
+    "dotenv": "^16.4.5"
   }
 }
