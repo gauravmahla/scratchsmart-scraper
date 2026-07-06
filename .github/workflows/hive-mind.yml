@@ -2,8 +2,8 @@ name: Neural Mesh Hive Mind
 
 on:
   schedule:
-    - cron: '30 17 * * *' # ~1:30 PM ET (Midday Run)
-    - cron: '30 3 * * *'  # ~11:30 PM ET (Evening Run - UTC next day)
+    - cron: '30 17 * * *' 
+    - cron: '30 3 * * *'  
   workflow_dispatch: 
 
 jobs:
@@ -19,8 +19,9 @@ jobs:
       with:
         node-version: '20'
 
+    # FIXED: Added 'ws' (WebSocket polyfill) to satisfy the server environment
     - name: Install Database Libraries
-      run: npm install @supabase/supabase-js
+      run: npm install @supabase/supabase-js ws
 
     - name: Run Hive Engine
       run: node hive_engine.js
