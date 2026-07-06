@@ -1,9 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws'); // THE FIX: Explicitly require the WebSocket library
 
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 
+// THE FIX: Explicitly inject the WebSocket into the Supabase global options
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: {
+        fetch: fetch,
+        WebSocket: WebSocket 
+    },
     auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -27,7 +33,7 @@ async function runColdStart() {
 
         if (!history || history.length === 0) {
             console.log("⚠️ No data found. Check Supabase RLS policies.");
-            process.exit(1); // BEST PRACTICE: Explicit failure exit
+            process.exit(1); 
         }
 
         console.log(`✅ Successfully loaded ${history.length} recent draws.`);
@@ -76,12 +82,10 @@ async function runColdStart() {
 
         console.log("🎉 Cold Start Complete! Hive is ready.");
         
-        // THE FIX: Explicitly terminate the Node process to prevent the server from hanging
         process.exit(0);
 
     } catch (error) {
         console.error("🚨 Critical Hive Error:", error);
-        // THE FIX: Explicitly terminate with an error code to immediately stop the GitHub Action
         process.exit(1);
     }
 }
