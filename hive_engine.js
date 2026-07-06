@@ -1,10 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// 1. Hardcoded Credentials (Private Repo Use Only)
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// FIXED: Configured specifically for a Headless Node.js Server (No browser features)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    }
+});
 
 async function runColdStart() {
     console.log("🚀 Waking the Hive Mind (Pure Math Engine)...");
@@ -29,7 +35,7 @@ async function runColdStart() {
         const latestDraw = history[0];
         console.log(`Latest Draw Date: ${latestDraw["Draw Date"]} (${latestDraw["Draw Type"]})`);
 
-        // 3. Compile the Initial State JSON (The Baseline)
+        // Compile the Initial State JSON (The Baseline)
         const initialState = {
             system_status: "🟢 ONLINE: Cold Start Baseline Established",
             cli_score: 50.0,
@@ -55,7 +61,7 @@ async function runColdStart() {
             message: "Hive Mind has successfully connected to the database. Pure Math Engine active."
         };
 
-        // 4. Inject the State into the empty daily_mesh_state table
+        // Inject the State into the empty daily_mesh_state table
         console.log("💾 Writing Initial State to Supabase...");
         const { error: stateError } = await supabase
             .from('daily_mesh_state')
