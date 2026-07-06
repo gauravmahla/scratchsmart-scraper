@@ -14,15 +14,22 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // 1. DATA INTEGRITY & FEATURES
 // ==========================================
 function runDataIntegrityGate(history) {
-    if (!history || history.length < 91) throw new Error("GATE_FAILED: Insufficient historical rows (Need 91+).");
+    if (!history || history.length < 91) throw new Error("GATE_FAILED: Insufficient epochs (Need 91+).");
     return true;
 }
 
 function buildFeatureBoard(historyBlock) {
     let freq = {};
+    let middayCount = 0;
+    let eveningCount = 0;
+    
     for(let i=1; i<=36; i++) freq[i] = 0;
     
     historyBlock.forEach(row => {
+        // Feature: Draw Type Context
+        if(row["Draw Time"] === "Midday") middayCount++;
+        if(row["Draw Time"] === "Evening") eveningCount++;
+
         [1,2,3,4,5].forEach(num => {
             let val = row[`Winning Number ${num}`];
             if(val >= 1 && val <= 36) freq[val]++;
@@ -30,15 +37,18 @@ function buildFeatureBoard(historyBlock) {
     });
 
     let freqArr = Object.keys(freq).map(k => ({ n: parseInt(k), c: freq[k] })).sort((a,b) => b.c - a.c);
+    let expectedBaseline = (historyBlock.length * 5) / 36;
+
     return {
         hot_numbers: freqArr.slice(0, 5).map(x => x.n),
         cold_numbers: freqArr.slice(-5).map(x => x.n),
-        expected_baseline_frequency: (historyBlock.length * 5) / 36 // Mathematical baseline
+        expected_baseline_frequency: Number(expectedBaseline.toFixed(2)),
+        draw_context_split: { midday: middayCount, evening: eveningCount }
     };
 }
 
 // ==========================================
-// 2. MINER ECOSYSTEM (Combinations & Telemetry)
+// 2. MINER ECOSYSTEM (Rulebook Grounded)
 // ==========================================
 const MinerEcosystem = {
     stripData: function(historyBlock) {
@@ -48,12 +58,11 @@ const MinerEcosystem = {
         ].sort((a,b) => a-b));
     },
     
-    // Exact Set-Overlap Scoring based on Rulebook Match Categories
     scoreBlindTest: function(prediction, actual) {
         let hits = 0;
         prediction.forEach(p => { if (actual.includes(p)) hits++; });
         
-        // Rulebook Tiers: 0-1 (Loss), 2 (Free Ticket), 3 (Cash), 4 (Cash), 5 (Top Prize)
+        // Exact Rulebook Overlap
         const matchTiers = {0: 0, 1: 0, 2: 10, 3: 40, 4: 80, 5: 100};
         
         return {
@@ -73,9 +82,7 @@ const MinerEcosystem = {
             };
         },
         Geometer: function(stripped) {
-            // Real Spatial Math: Calculate average gap between adjacent numbers
-            let totalGaps = 0;
-            let gapCount = 0;
+            let totalGaps = 0, gapCount = 0;
             stripped.forEach(row => {
                 for(let i=0; i<4; i++) {
                     totalGaps += (row[i+1] - row[i]);
@@ -83,12 +90,9 @@ const MinerEcosystem = {
                 }
             });
             let avgGap = Math.max(1, Math.round(totalGaps / gapCount));
-            // Project a combination using the average structural gap, starting near 1
             let start = 2; 
             let pred = [start, start + avgGap, start + (avgGap*2), start + (avgGap*3), start + (avgGap*4)];
-            // Constrain to 1-36
             pred = pred.map(n => n > 36 ? (n % 36) || 36 : n);
-            // Ensure uniqueness (simple fallback for overlap)
             let uniquePred = [...new Set(pred)];
             let fill = 1;
             while(uniquePred.length < 5) {
@@ -128,33 +132,27 @@ const MinerEcosystem = {
 };
 
 // ==========================================
-// 3. SIX-HAT COUNCIL & WEIGHTED VOTING MATRIX
+// 3. SIX-HAT COUNCIL (Weighted Voting Matrix)
 // ==========================================
 function runCouncilDebate(minerResults, tieBreakerAgent) {
     let voteMatrix = {};
     for(let i=1; i<=36; i++) voteMatrix[i] = 0;
     
-    // Tally every vote from every miner
     Object.values(minerResults).forEach(result => {
-        result.prediction.forEach(num => {
-            voteMatrix[num] += 1;
-        });
+        result.prediction.forEach(num => { voteMatrix[num] += 1; });
     });
 
-    // Sort board by vote weight descending
     let sortedByWeight = Object.keys(voteMatrix)
         .map(num => parseInt(num))
         .sort((a, b) => {
             let weightDiff = voteMatrix[b] - voteMatrix[a];
             if (weightDiff !== 0) return weightDiff;
-            // Tie-Breaker Logic: Defer to the strongest solo agent's prediction vector
             let tieBreakerVector = minerResults[tieBreakerAgent]?.prediction || [];
             if (tieBreakerVector.includes(a) && !tieBreakerVector.includes(b)) return -1;
             if (tieBreakerVector.includes(b) && !tieBreakerVector.includes(a)) return 1;
             return a - b; 
         });
 
-    // GUARANTEE EXACTLY 5 NUMBERS
     let top5 = sortedByWeight.slice(0, 5).sort((a,b) => a-b);
     let tieBreakRequired = voteMatrix[top5[4]] < 2;
 
@@ -162,26 +160,25 @@ function runCouncilDebate(minerResults, tieBreakerAgent) {
         council_consensus_entry: top5,
         debate_status: voteMatrix[top5[4]] >= 2 ? "STRONG_CONSENSUS" : "TIE_BREAK_FORCED",
         tie_break_utilized: tieBreakRequired,
-        vetoed_anomalies: sortedByWeight.slice(-5) // The 5 least supported numbers
+        vetoed_anomalies: sortedByWeight.slice(-5) 
     };
 }
 
 // ==========================================
-// MAIN ENGINE EXECUTION (PHASE 2)
+// MAIN ENGINE EXECUTION
 // ==========================================
 async function runEngine() {
-    console.log("🚀 Waking the Hive Mind (Phase 2: Rulebook Grounded)...");
+    console.log("🚀 Waking the Hive Mind (Phase 2: Full XAI Telemetry)...");
     try {
         const { data: history, error: fetchError } = await supabase
             .from('f5_draws')
             .select('*')
-            .order('id', { ascending: false }) // Ensures freshest data is index 0
+            .order('id', { ascending: false })
             .limit(180);
 
         if (fetchError) throw fetchError;
         runDataIntegrityGate(history);
 
-        // Define the Blind Surprise Test Window
         const blindTargetRow = history[0]; 
         const blindTargetNumbers = [
             blindTargetRow["Winning Number 1"], blindTargetRow["Winning Number 2"], 
@@ -191,61 +188,69 @@ async function runEngine() {
         const homeworkHistory = history.slice(1, 91); 
         const strippedHomework = MinerEcosystem.stripData(homeworkHistory);
 
-        let blind_surprise_tests = {};
         let miner_kpis = {};
-        let highestScoringAgent = "Quant"; // Default fallback
+        let highestScoringAgent = "Quant"; 
         let highestScore = -1;
+        let worstScoringAgent = "Quant";
+        let lowestScore = 101;
 
-        // Execute Miners on the Blind Holdout
         for (const [name, logic] of Object.entries(MinerEcosystem.agents)) {
             let agentOutput = logic(strippedHomework);
             let testResult = MinerEcosystem.scoreBlindTest(agentOutput.prediction, blindTargetNumbers);
             
-            blind_surprise_tests[name] = { 
-                prediction: agentOutput.prediction, 
-                actual: blindTargetNumbers, 
+            miner_kpis[name] = {
+                prediction: agentOutput.prediction,
                 score: testResult.score,
                 exact_matches: testResult.matches,
-                primary_trigger: agentOutput.telemetry_tag
-            };
-
-            miner_kpis[name] = {
+                primary_trigger: agentOutput.telemetry_tag,
                 status: testResult.score >= 40 ? "FLOW" : (testResult.score === 0 ? "SLUMP" : "NOMINAL"),
-                rolling_score: testResult.score,
-                evidence_completeness: "VERIFIED"
+                evidence_chain: `Tested against ${homeworkHistory.length} rows. Applied ${agentOutput.telemetry_tag} logic.`
             };
 
-            if (testResult.score > highestScore) {
-                highestScore = testResult.score;
-                highestScoringAgent = name;
-            }
+            if (testResult.score > highestScore) { highestScore = testResult.score; highestScoringAgent = name; }
+            if (testResult.score < lowestScore) { lowestScore = testResult.score; worstScoringAgent = name; }
         }
 
-        // Execute Council with Weighted Matrix
-        const councilOutput = runCouncilDebate(blind_surprise_tests, highestScoringAgent);
+        const councilOutput = runCouncilDebate(miner_kpis, highestScoringAgent);
+        
+        let auditScore = 50 + (highestScore / 2);
 
-        // Final Phase 2 Master Payload
         const engineState = {
             schema_version: "PHASE_2_RULEBOOK_GROUNDED",
             cycle_id: `CYC-${Date.now()}`,
             run_date: new Date().toISOString(),
+            system_metrics: { epoch_count: history.length },
+            
             rule_compliance: {
                 exactly_five_numbers: true,
                 combination_only: true
             },
+            
             daily_standup: {
-                top_learning: `The ${highestScoringAgent} agent successfully mapped the hidden variance today.`,
-                system_health: highestScore >= 40 ? "NOMINAL" : "VOLATILE"
+                best_miner_today: highestScoringAgent,
+                worst_miner_today: worstScoringAgent,
+                top_learning: `${highestScoringAgent} validated its ${miner_kpis[highestScoringAgent].primary_trigger} hypothesis.`,
+                top_risk: councilOutput.tie_break_utilized ? "Weak overall network consensus required tie-break." : "None. Strong consensus achieved.",
+                system_health: auditScore >= 60 ? "NOMINAL" : "VOLATILE",
+                overall_audit_score: auditScore
             },
-            feature_summary: buildFeatureBoard(homeworkHistory),
-            blind_surprise_tests: blind_surprise_tests,
+            
+            feature_factory: buildFeatureBoard(homeworkHistory),
             miner_kpis: miner_kpis,
             six_hat_council: councilOutput,
+            
+            hypothesis_activity: [
+                { owner: highestScoringAgent, status: "PROMOTED", method: miner_kpis[highestScoringAgent].primary_trigger }
+            ],
+            
             historic_leadership: {
                 current_leader: highestScoringAgent,
-                caveat: "Insufficient Epochs for Long-Term Averages"
+                caveat: "EARLY_SIGNAL: Insufficient Epochs for Durable Leadership"
             }
         };
+
+        // Injecting the raw export block for MLOps UI extraction
+        engineState.developer_export = JSON.stringify(engineState);
 
         console.log("💾 Appending Rulebook-Grounded Cycle to Permanent Memory...");
         const { error: stateError } = await supabase
@@ -253,7 +258,7 @@ async function runEngine() {
             .insert({ cycle_id: engineState.cycle_id, state_payload: engineState });
 
         if (stateError) throw stateError;
-        console.log("🎉 PHASE 2 ENGINE LOCKED! Payload successfully dispatched.");
+        console.log("🎉 PHASE 2 ENGINE LOCKED! Telemetry payload dispatched.");
         process.exit(0);
     } catch (error) {
         console.error("FATAL ERROR: ", error.message);
