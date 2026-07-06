@@ -20,7 +20,7 @@ jobs:
         node-version: '20'
 
     - name: Install Database Libraries
-      run: npm install
+      run: npm install @supabase/supabase-js
 
     - name: Run Hive Engine
       run: node hive_engine.js
