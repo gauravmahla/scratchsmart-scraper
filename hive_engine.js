@@ -10,10 +10,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // ==========================================
-// 1. DATA INGESTION & INFORMATION MASKING
+// 1. DATA INGESTION & MASKING
 // ==========================================
 async function fetchStratifiedEras() {
-    console.log("📡 Fetching Stratified KDD Blocks (Information Masked)...");
+    console.log("📡 Fetching Stratified KDD Blocks...");
     const { data: recent, error: err1 } = await supabase.from('f5_draws').select('*').order('id', { ascending: false }).limit(100);
     const midOffset = Math.floor(Math.random() * 4000) + 1000;
     const { data: mid, error: err2 } = await supabase.from('f5_draws').select('*').order('id', { ascending: false }).range(midOffset, midOffset + 89);
@@ -30,7 +30,6 @@ function extractNumbers(row) {
         .map(n => parseInt(n)).sort((a,b) => a-b);
 }
 
-// SAFE EXTRACTION: Parses DB rows into pure number arrays for the Miners
 function isolateRegime(block, drawType) {
     let target = drawType.toLowerCase().trim();
     let isolated = block.filter(row => {
@@ -41,7 +40,7 @@ function isolateRegime(block, drawType) {
 }
 
 // ==========================================
-// 2. RETRO-LEDGER & FULL PORTFOLIO SCORING
+// 2. RETRO-LEDGER & ROI SCORING
 // ==========================================
 async function performColdStartAndReflection(latestDrawRow) {
     const { data: lastState, error } = await supabase.from('daily_mesh_state').select('state_payload').order('id', { ascending: false }).limit(1);
@@ -79,12 +78,12 @@ async function performColdStartAndReflection(latestDrawRow) {
         simulated_spend: prevROI.simulated_spend + 10,
         free_tickets_banked: prevROI.free_tickets_banked + ticketsWonToday,
         cash_prizes: prevROI.cash_prizes + (bestMatchCount >= 3 ? 10 : 0),
-        behavioral_mode: (prevROI.free_tickets_banked + ticketsWonToday) > 2 ? "PLAY_SAFE" : "AMBITIOUS_RECOVERY"
+        behavioral_mode: (prevROI.free_tickets_banked + ticketsWonToday) > 1 ? "PLAY_SAFE" : "AMBITIOUS_RECOVERY"
     };
 
     return {
-        status: payload.schema_version === "PHASE_3_KDD_STRATIFIED" ? "COLD_START_RECALIBRATION" : "PORTFOLIO_SCORED",
-        target_evaluated: latestDrawRow["Draw Time"] || "UNKNOWN",
+        status: "PORTFOLIO_SCORED",
+        target_evaluated: latestDrawRow["Draw Time"] || latestDrawRow["Draw"] || "UNKNOWN",
         actual_draw: actualNumbers,
         portfolio_recall: Array.from(portfolioRecallSet),
         best_panel_match: `${bestMatchCount}-of-5`,
@@ -95,7 +94,7 @@ async function performColdStartAndReflection(latestDrawRow) {
 }
 
 // ==========================================
-// 3. MINER ECOSYSTEM & TAG REGISTRY (Dynamic Math Restored)
+// 3. MINERS & NUMBER IDENTITY MATRIX
 // ==========================================
 const MinerEcosystem = {
     validateRulebook: function(arr) {
@@ -106,77 +105,41 @@ const MinerEcosystem = {
     },
 
     agents: {
-        Quant: { 
-            logic: (regimeArray) => {
-                let f = {}; regimeArray.flat().forEach(n => f[n] = (f[n]||0)+1);
-                return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b) => f[b] - f[a]).slice(0, 5));
-            }, 
-            tag: "HISTORICAL_FREQUENCY_PEAK", state: "VALIDATED", rotation: 2 
-        },
-        Geometer: { 
-            logic: (regimeArray) => {
-                let totalGaps = 0, count = 0;
-                regimeArray.forEach(row => { for(let i=0; i<4; i++) { totalGaps += (row[i+1] - row[i]); count++; }});
-                let avg = Math.max(1, Math.round(totalGaps/Math.max(1,count)));
-                let s = regimeArray[0]?.[0] || 2;
-                return MinerEcosystem.validateRulebook([s, s+avg, s+(avg*2), s+(avg*3), s+(avg*4)]);
-            }, 
-            tag: "SPATIAL_CLUSTER_DETECTED", state: "PROBATIONARY_SANDBOX", rotation: 1 
-        },
-        Hacker: { 
-            logic: (regimeArray) => {
-                let last = regimeArray[0] || [1,2,3,4,5];
-                return MinerEcosystem.validateRulebook(last.map(n => n + 1));
-            }, 
-            tag: "SEQUENTIAL_ANOMALY_EXPLOIT", state: "QUARANTINED", rotation: 2 
-        },
-        Contrarian: { 
-            logic: (regimeArray) => {
-                let f = {}; for(let i=1; i<=36; i++) f[i] = 0;
-                regimeArray.flat().forEach(n => f[n]++);
-                return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b) => f[a] - f[b]).slice(0, 5));
-            }, 
-            tag: "MEAN_REVERSION_DEBT", state: "VALIDATED", rotation: 3 
-        },
-        SameDayBridge: { 
-            logic: (regimeArray) => {
-                let last = regimeArray[0] || [1,2,3,4,5];
-                return MinerEcosystem.validateRulebook([last[0], last[1], last[2]+1, last[3]+1, last[4]+1]);
-            }, 
-            tag: "SAME_DAY_CARRYOVER", state: "WATCHLIST", rotation: 1 
-        }
+        Quant: { logic: (r) => { let f={}; r.flat().forEach(n => f[n]=(f[n]||0)+1); return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b)=>f[b]-f[a]).slice(0,5)); }, tag: "HISTORICAL_FREQUENCY_PEAK", state: "VALIDATED", rotation: 2 },
+        Geometer: { logic: (r) => { let g=0,c=0; r.forEach(row=>{for(let i=0;i<4;i++){g+=(row[i+1]-row[i]);c++;}}); let avg=Math.max(1,Math.round(g/Math.max(1,c))); let s=r[0]?.[0]||2; return MinerEcosystem.validateRulebook([s,s+avg,s+(avg*2),s+(avg*3),s+(avg*4)]); }, tag: "SPATIAL_CLUSTER_DETECTED", state: "PROBATIONARY_SANDBOX", rotation: 1 },
+        Hacker: { logic: (r) => MinerEcosystem.validateRulebook((r[0]||[1,2,3,4,5]).map(n=>n+1)), tag: "SEQUENTIAL_ANOMALY_EXPLOIT", state: "QUARANTINED", rotation: 2 },
+        Contrarian: { logic: (r) => { let f={}; for(let i=1;i<=36;i++) f[i]=0; r.flat().forEach(n=>f[n]++); return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b)=>f[a]-f[b]).slice(0,5)); }, tag: "MEAN_REVERSION_DEBT", state: "VALIDATED", rotation: 3 },
+        SameDayBridge: { logic: (r) => { let l=r[0]||[1,2,3,4,5]; return MinerEcosystem.validateRulebook([l[0],l[1],l[2]+1,l[3]+1,l[4]+1]); }, tag: "SAME_DAY_CARRYOVER", state: "WATCHLIST", rotation: 1 }
     }
 };
+
+const CouncilWeights = { "VALIDATED": 1.0, "PROMOTED": 1.0, "WATCHLIST": 0.5, "QUARANTINED": 0.1, "PROBATIONARY_SANDBOX": 0.1 };
 
 // ==========================================
 // 4. SIGNAL-TO-PANEL TRANSLATOR
 // ==========================================
-function executeCombinatorialTranslation(minerPool, behavioralMode) {
-    let pool = new Set();
-    Object.values(minerPool).forEach(m => m.signals.forEach(n => pool.add(n)));
-    let signalArray = Array.from(pool).sort((a,b) => a-b);
-    
-    // Core numbers for variance trapping
-    let core = signalArray.slice(0, 4); 
+function executeCombinatorialTranslation(entityLedger, behavioralMode) {
+    // Sort all 36 numbers by their cumulative Entity Score (weighted by Council)
+    let sortedNumbers = Object.values(entityLedger)
+        .filter(e => e.entity_score > 0)
+        .sort((a,b) => b.entity_score - a.entity_score)
+        .map(e => e.number);
+
+    let core = sortedNumbers.slice(0, 4); 
     if (core.length < 4) core = [2, 9, 15, 22];
 
     let portfolio = {};
-    
-    // Vanguard (Core Alignment)
-    portfolio["Panel_A"] = { intent: "Vanguard Core", numbers: MinerEcosystem.validateRulebook([...core, signalArray[4] || 30]) };
-    portfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: MinerEcosystem.validateRulebook([...core, signalArray[5] || 31]) };
-    
-    // Combinatorial Net (Hunting 3-of-5 / 4-of-5 Traps)
     const netShift = behavioralMode === "AMBITIOUS_RECOVERY" ? 2 : 1;
+    
+    portfolio["Panel_A"] = { intent: "Vanguard Core (Highest Weight)", numbers: MinerEcosystem.validateRulebook([...core, sortedNumbers[4] || 30]) };
+    portfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: MinerEcosystem.validateRulebook([...core, sortedNumbers[5] || 31]) };
     portfolio["Panel_C"] = { intent: "Combinatorial Net 1", numbers: MinerEcosystem.validateRulebook(core.map(n => n + netShift)) };
     portfolio["Panel_D"] = { intent: "Combinatorial Net 2", numbers: MinerEcosystem.validateRulebook(core.map(n => n + (netShift*2))) };
     portfolio["Panel_E"] = { intent: "Combinatorial Net 3", numbers: MinerEcosystem.validateRulebook(core.map(n => n - netShift)) };
-    portfolio["Panel_F"] = { intent: "Combinatorial Net 4", numbers: MinerEcosystem.validateRulebook(signalArray.slice(2, 7)) };
-    portfolio["Panel_G"] = { intent: "Combinatorial Net 5", numbers: MinerEcosystem.validateRulebook(signalArray.slice(4, 9)) };
-    
-    // Bridge & Experimental
-    portfolio["Panel_H"] = { intent: "Same-Day Bridge Matrix", numbers: minerPool["SameDayBridge"]?.signals || [1,2,3,4,5] };
-    portfolio["Panel_I"] = { intent: "Probationary Sandbox", numbers: minerPool["Geometer"]?.signals || [5,10,15,20,25] };
+    portfolio["Panel_F"] = { intent: "Combinatorial Net 4", numbers: MinerEcosystem.validateRulebook(sortedNumbers.slice(2, 7)) };
+    portfolio["Panel_G"] = { intent: "Combinatorial Net 5", numbers: MinerEcosystem.validateRulebook(sortedNumbers.slice(4, 9)) };
+    portfolio["Panel_H"] = { intent: "Same-Day Bridge Matrix", numbers: MinerEcosystem.validateRulebook(sortedNumbers.slice(1, 6)) };
+    portfolio["Panel_I"] = { intent: "Probationary Sandbox", numbers: MinerEcosystem.validateRulebook(core.map(n => n + 7)) };
     portfolio["Panel_J"] = { intent: "Shadow Mutation", numbers: MinerEcosystem.validateRulebook(core.map(n => n * 2)) };
 
     return portfolio;
@@ -192,29 +155,47 @@ async function runEngine() {
         if (eras.recent.length === 0) throw new Error("Recent block empty.");
 
         const latestDrawRow = eras.recent[0];
-        const nextTargetRegime = (latestDrawRow["Draw Time"] || "").toLowerCase().includes("midday") ? "Evening" : "Midday";
-        const sourceCutoff = `ROW_ID_${latestDrawRow.id}_${latestDrawRow["Date"]}`;
+        const nextTargetRegime = (latestDrawRow["Draw Time"] || latestDrawRow["Draw"] || "").toLowerCase().includes("midday") ? "Evening" : "Midday";
+        
+        // BUG FIX 1: Exact Date and Time Mapping
+        const extractedDate = latestDrawRow["Draw Date"] || latestDrawRow["Date"] || "UNKNOWN";
+        const sourceCutoff = `ROW_ID_${latestDrawRow.id}_${extractedDate}`;
 
-        // 1. Immutable Audit & Cold Start Grading (FIXED VARIABLE)
         const retroLedger = await performColdStartAndReflection(latestDrawRow);
 
-        // 2. Miner Signal Generation
+        // BUG FIX 2 & 3: Entity Ledger & Council Weights
+        let entityLedger = {};
+        for(let i=1; i<=36; i++) { entityLedger[i] = { number: i, entity_score: 0, tag_history: [], selected_by: [] }; }
+
         let minerPool = {};
         let isolatedRegime = isolateRegime(eras.recent, nextTargetRegime);
 
         for (const [name, config] of Object.entries(MinerEcosystem.agents)) {
+            let signals = config.logic(isolatedRegime);
+            let weight = CouncilWeights[config.state] || 0.1;
+            
             minerPool[name] = {
-                signals: config.logic(isolatedRegime), // Dynamically mining the masked data
+                signals: signals,
                 tag_state: config.state,
+                council_weight: weight,
                 active_hypothesis: config.tag,
                 historical_saturation: `Rotation ${config.rotation}`
             };
+
+            signals.forEach(num => {
+                if(entityLedger[num]) {
+                    entityLedger[num].entity_score += weight;
+                    entityLedger[num].selected_by.push(name);
+                    if(!entityLedger[num].tag_history.includes(config.tag)) {
+                        entityLedger[num].tag_history.push(config.tag);
+                    }
+                }
+            });
         }
 
-        // 3. Rulebook-Aligned Translation
-        const portfolio = executeCombinatorialTranslation(minerPool, retroLedger.roi_ledger.behavioral_mode);
+        // BUG FIX 4: Signal-to-Panel uses the actual weighted Entity Ledger
+        const portfolio = executeCombinatorialTranslation(entityLedger, retroLedger.roi_ledger.behavioral_mode);
 
-        // 4. Assemble Phase 4 Staging Memory
         const engineState = {
             schema_version: "PHASE_4_SENTIENT_COMBINATORIAL",
             experiment_chronology: {
@@ -226,11 +207,12 @@ async function runEngine() {
             },
             rulebook_compliance: { exactly_five_numbers: true, ten_panel_limit_enforced: true, target_objective: "5-of-5_SINGLE_ROW" },
             retro_ledger: retroLedger,
+            entity_ledger: entityLedger,
             miner_workspaces: minerPool,
             playslip_portfolio: portfolio,
             daily_standup: {
                 status: "DEBATE_CONCLUDED",
-                action_item: retroLedger.status === "COLD_START_RECALIBRATION" ? "Legacy math graded. Phase 4 parameters locked." : "Variance trapped. Monitoring for official results."
+                action_item: "Entity scores calculated via Weighted Matrix. Combinatorial net deployed."
             }
         };
 
@@ -240,7 +222,7 @@ async function runEngine() {
         const { error: stateError } = await supabase.from('daily_mesh_state').insert({ cycle_id: engineState.experiment_chronology.cycle_id, state_payload: engineState });
         if (stateError) throw stateError;
         
-        console.log("🎉 PHASE 4 LOCKED! Zero Cognitive Decline execution complete.");
+        console.log("🎉 PHASE 4 LOCKED! Backend Execution Complete.");
         process.exit(0);
     } catch (error) {
         console.error("FATAL ERROR: ", error.message);
