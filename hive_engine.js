@@ -13,7 +13,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // 1. DATA INGESTION & INFORMATION MASKING
 // ==========================================
 async function fetchStratifiedEras() {
-    console.log("📡 Fetching Stratified KDD Blocks...");
+    console.log("📡 Fetching Stratified KDD Blocks (Information Masked)...");
     const { data: recent, error: err1 } = await supabase.from('f5_draws').select('*').order('id', { ascending: false }).limit(100);
     const midOffset = Math.floor(Math.random() * 4000) + 1000;
     const { data: mid, error: err2 } = await supabase.from('f5_draws').select('*').order('id', { ascending: false }).range(midOffset, midOffset + 89);
@@ -30,13 +30,23 @@ function extractNumbers(row) {
         .map(n => parseInt(n)).sort((a,b) => a-b);
 }
 
+// SAFE EXTRACTION: Parses DB rows into pure number arrays for the Miners
+function isolateRegime(block, drawType) {
+    let target = drawType.toLowerCase().trim();
+    let isolated = block.filter(row => {
+        let dbTime = (row["Draw Time"] || row["Draw"] || "").toLowerCase().trim();
+        return dbTime.includes(target);
+    }).map(extractNumbers);
+    return isolated.length > 0 ? isolated : block.map(extractNumbers);
+}
+
 // ==========================================
 // 2. RETRO-LEDGER & FULL PORTFOLIO SCORING
 // ==========================================
-async function performColdStartAndReflection(latestOfficialRow) {
+async function performColdStartAndReflection(latestDrawRow) {
     const { data: lastState, error } = await supabase.from('daily_mesh_state').select('state_payload').order('id', { ascending: false }).limit(1);
 
-    const actualNumbers = extractNumbers(latestOfficialRow);
+    const actualNumbers = extractNumbers(latestDrawRow);
     let defaultROI = { simulated_spend: 0, free_tickets_banked: 0, cash_prizes: 0, behavioral_mode: "AMBITIOUS_RECOVERY" };
 
     if (error || !lastState || lastState.length === 0) {
@@ -47,7 +57,6 @@ async function performColdStartAndReflection(latestOfficialRow) {
     const prevPortfolio = payload?.playslip_portfolio || {};
     const prevROI = payload?.retro_ledger?.roi_ledger || defaultROI;
     
-    // Grading Phase 3 or Phase 4 Portfolio
     let panelScores = {};
     let bestMatchCount = 0;
     let portfolioRecallSet = new Set();
@@ -62,7 +71,7 @@ async function performColdStartAndReflection(latestOfficialRow) {
         }
         panelScores[panelId] = `${matchCount}-of-5`;
         if (matchCount > bestMatchCount) bestMatchCount = matchCount;
-        if (matchCount === 2) ticketsWonToday++; // Rulebook 2-of-5 Free Ticket
+        if (matchCount === 2) ticketsWonToday++; 
     });
 
     const assemblyGap = portfolioRecallSet.size - bestMatchCount;
@@ -75,7 +84,7 @@ async function performColdStartAndReflection(latestOfficialRow) {
 
     return {
         status: payload.schema_version === "PHASE_3_KDD_STRATIFIED" ? "COLD_START_RECALIBRATION" : "PORTFOLIO_SCORED",
-        target_evaluated: latestOfficialRow["Draw Time"] || "UNKNOWN",
+        target_evaluated: latestDrawRow["Draw Time"] || "UNKNOWN",
         actual_draw: actualNumbers,
         portfolio_recall: Array.from(portfolioRecallSet),
         best_panel_match: `${bestMatchCount}-of-5`,
@@ -86,7 +95,7 @@ async function performColdStartAndReflection(latestOfficialRow) {
 }
 
 // ==========================================
-// 3. MINER ECOSYSTEM & TAG REGISTRY
+// 3. MINER ECOSYSTEM & TAG REGISTRY (Dynamic Math Restored)
 // ==========================================
 const MinerEcosystem = {
     validateRulebook: function(arr) {
@@ -97,11 +106,45 @@ const MinerEcosystem = {
     },
 
     agents: {
-        Quant: { logic: (recent) => MinerEcosystem.validateRulebook([2, 5, 12, 19, 28]), tag: "HISTORICAL_FREQUENCY_PEAK", state: "VALIDATED", rotation: 2 },
-        Geometer: { logic: (recent) => MinerEcosystem.validateRulebook([7, 14, 21, 28, 35]), tag: "SPATIAL_CLUSTER_DETECTED", state: "PROBATIONARY_SANDBOX", rotation: 1 },
-        Hacker: { logic: (recent) => MinerEcosystem.validateRulebook([10, 11, 12, 13, 14]), tag: "SEQUENTIAL_ANOMALY_EXPLOIT", state: "QUARANTINED", rotation: 2 },
-        Contrarian: { logic: (recent) => MinerEcosystem.validateRulebook([1, 8, 15, 22, 29]), tag: "MEAN_REVERSION_DEBT", state: "VALIDATED", rotation: 3 },
-        SameDayBridge: { logic: (recent) => MinerEcosystem.validateRulebook([3, 9, 12, 21, 30]), tag: "SAME_DAY_CARRYOVER", state: "WATCHLIST", rotation: 1 }
+        Quant: { 
+            logic: (regimeArray) => {
+                let f = {}; regimeArray.flat().forEach(n => f[n] = (f[n]||0)+1);
+                return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b) => f[b] - f[a]).slice(0, 5));
+            }, 
+            tag: "HISTORICAL_FREQUENCY_PEAK", state: "VALIDATED", rotation: 2 
+        },
+        Geometer: { 
+            logic: (regimeArray) => {
+                let totalGaps = 0, count = 0;
+                regimeArray.forEach(row => { for(let i=0; i<4; i++) { totalGaps += (row[i+1] - row[i]); count++; }});
+                let avg = Math.max(1, Math.round(totalGaps/Math.max(1,count)));
+                let s = regimeArray[0]?.[0] || 2;
+                return MinerEcosystem.validateRulebook([s, s+avg, s+(avg*2), s+(avg*3), s+(avg*4)]);
+            }, 
+            tag: "SPATIAL_CLUSTER_DETECTED", state: "PROBATIONARY_SANDBOX", rotation: 1 
+        },
+        Hacker: { 
+            logic: (regimeArray) => {
+                let last = regimeArray[0] || [1,2,3,4,5];
+                return MinerEcosystem.validateRulebook(last.map(n => n + 1));
+            }, 
+            tag: "SEQUENTIAL_ANOMALY_EXPLOIT", state: "QUARANTINED", rotation: 2 
+        },
+        Contrarian: { 
+            logic: (regimeArray) => {
+                let f = {}; for(let i=1; i<=36; i++) f[i] = 0;
+                regimeArray.flat().forEach(n => f[n]++);
+                return MinerEcosystem.validateRulebook(Object.keys(f).sort((a,b) => f[a] - f[b]).slice(0, 5));
+            }, 
+            tag: "MEAN_REVERSION_DEBT", state: "VALIDATED", rotation: 3 
+        },
+        SameDayBridge: { 
+            logic: (regimeArray) => {
+                let last = regimeArray[0] || [1,2,3,4,5];
+                return MinerEcosystem.validateRulebook([last[0], last[1], last[2]+1, last[3]+1, last[4]+1]);
+            }, 
+            tag: "SAME_DAY_CARRYOVER", state: "WATCHLIST", rotation: 1 
+        }
     }
 };
 
@@ -152,14 +195,16 @@ async function runEngine() {
         const nextTargetRegime = (latestDrawRow["Draw Time"] || "").toLowerCase().includes("midday") ? "Evening" : "Midday";
         const sourceCutoff = `ROW_ID_${latestDrawRow.id}_${latestDrawRow["Date"]}`;
 
-        // 1. Immutable Audit & Cold Start Grading
-        const retroLedger = await performColdStartAndReflection(latestOfficialRow);
+        // 1. Immutable Audit & Cold Start Grading (FIXED VARIABLE)
+        const retroLedger = await performColdStartAndReflection(latestDrawRow);
 
         // 2. Miner Signal Generation
         let minerPool = {};
+        let isolatedRegime = isolateRegime(eras.recent, nextTargetRegime);
+
         for (const [name, config] of Object.entries(MinerEcosystem.agents)) {
             minerPool[name] = {
-                signals: config.logic(eras.recent),
+                signals: config.logic(isolatedRegime), // Dynamically mining the masked data
                 tag_state: config.state,
                 active_hypothesis: config.tag,
                 historical_saturation: `Rotation ${config.rotation}`
