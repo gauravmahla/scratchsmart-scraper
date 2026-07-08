@@ -4,16 +4,24 @@
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
-const WebSocket = require('ws'); // RESTORED: WebSocket polyfill for Node 20 GitHub Actions
+const WebSocket = require('ws'); 
 
-// --- 1. CONFIGURATION & SECRETS (HARDCODED FOR MOBILE WORKFLOW) ---
+// Force Node global polyfill as an absolute fail-safe
+global.WebSocket = WebSocket;
+
+// --- 1. CONFIGURATION & SECRETS ---
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 
-// Inject WebSocket into Supabase client to prevent Node 20 crash
+// Inject WebSocket directly into the Realtime transport config
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false },
-    global: { WebSocket: WebSocket }
+    realtime: {
+        transport: WebSocket
+    },
+    global: {
+        WebSocket: WebSocket
+    }
 });
 
 // --- 2. CRYPTOGRAPHIC & COMBINATORIAL HELPERS ---
@@ -69,7 +77,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         let panelBreakdown = {};
         let winningPanels = 0;
 
-        // Grade the specific ticket generated prior to the draw
         Object.keys(previousRun.playslip_portfolio).forEach(panelKey => {
             const panelNumbers = previousRun.playslip_portfolio[panelKey].numbers;
             const matches = panelNumbers.filter(n => latestOfficialDraw.includes(n));
