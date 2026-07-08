@@ -4,11 +4,17 @@
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const WebSocket = require('ws'); // RESTORED: WebSocket polyfill for Node 20 GitHub Actions
 
 // --- 1. CONFIGURATION & SECRETS (HARDCODED FOR MOBILE WORKFLOW) ---
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Inject WebSocket into Supabase client to prevent Node 20 crash
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false },
+    global: { WebSocket: WebSocket }
+});
 
 // --- 2. CRYPTOGRAPHIC & COMBINATORIAL HELPERS ---
 function generatePortfolioHash(portfolio) {
@@ -17,7 +23,6 @@ function generatePortfolioHash(portfolio) {
 
 function buildPanel(numbersArray) {
     const unique = Array.from(new Set(numbersArray)).filter(n => typeof n === 'number' && n >= 1 && n <= 36);
-    // Baseline spatial distribution fallbacks if overlap occurs
     const fallbacks = [4, 11, 19, 27, 34]; 
     while (unique.length < 5) {
         let fb = fallbacks.shift();
@@ -103,8 +108,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     // ========================================================================
     // PHASE 2: THE PRESENT (ML Council Adjustments & Dynamic Scoring)
     // ========================================================================
-    
-    // Baseline Agent Subroutines (To be replaced by full historical DB scans in production)
     const activeMiners = {
         "Quant": { signals: [2, 6, 9, 19, 22], tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "HISTORICAL_FREQUENCY_PEAK" },
         "Hacker": { signals: [7, 10, 12, 13, 23], tag_state: "PENDING", council_weight: 0.1, active_hypothesis: "SEQUENTIAL_ANOMALY_EXPLOIT" },
@@ -113,7 +116,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         "SameDayBridge": { signals: [6, 9, 12, 23, 36], tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SAME_DAY_CARRYOVER" }
     };
 
-    // Apply strict penalties/promotions based on the isolated Retro Grade
     if (retroLedger.status === "PORTFOLIO_SCORED") {
         Object.keys(activeMiners).forEach(minerName => {
             const hits = activeMiners[minerName].signals.filter(n => retroLedger.portfolio_recall.includes(n)).length;
@@ -130,7 +132,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         });
     }
 
-    // Build the 1-36 Entity Convergence Matrix
     let entityLedger = {};
     for (let i = 1; i <= 36; i++) {
         entityLedger[i] = { number: i, selected_by: [], tag_history: [], entity_score: 0 };
@@ -151,7 +152,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     // ========================================================================
     console.log("🕸️ Assembling Abbreviated Wheeling Matrix...");
     
-    // Sort array descending to segregate Anchors from Variance/Anomalies
     const sortedEntities = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
     const anchors = sortedEntities.slice(0, 4).map(e => e.number); 
     const variance = sortedEntities.slice(4, 9).map(e => e.number); 
@@ -159,20 +159,20 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     
     let playslipPortfolio = {};
 
-    // TRAP 1: VANGUARD CORE (Direct High-Trust Density)
+    // TRAP 1: VANGUARD CORE 
     playslipPortfolio["Panel_A"] = { intent: "Vanguard Core (Highest Weight)", numbers: buildPanel([...anchors, variance[0]]) };
     playslipPortfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: buildPanel([...anchors, variance[1]]) };
 
-    // TRAP 2: CROSS-POLLINATION WHEEL (Forces Vanguard to interact with High-Risk Tail to eliminate Assembly Gap)
+    // TRAP 2: CROSS-POLLINATION WHEEL 
     playslipPortfolio["Panel_C"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[2], risky[0] || variance[2], risky[1] || variance[3]]) };
     playslipPortfolio["Panel_D"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[3], risky[0] || variance[2], variance[2]]) };
     playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], risky[1] || variance[3], variance[3]]) };
     playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net 2", numbers: buildPanel([anchors[0], anchors[2], anchors[3], risky[0] || variance[2], variance[4]]) };
 
-    // TRAP 3: SUM-RANGE BALANCING (Explicit targeting of the 70-100 mathematical curve)
+    // TRAP 3: SUM-RANGE BALANCING 
     let pG = [variance[0], variance[1], variance[2], risky[0] || 15, anchors[0]];
-    if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; // Floor correction
-    if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; // Ceiling correction
+    if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; 
+    if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; 
     playslipPortfolio["Panel_G"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pG) };
 
     let pH = [variance[3], variance[4], risky[1] || 16, anchors[1], anchors[2]];
@@ -180,7 +180,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     if (pH.reduce((a,b)=>a+b,0) > 100) pH[4] = 3;
     playslipPortfolio["Panel_H"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pH) };
 
-    // TRAP 4: PARITY BALANCE & SHADOW MUTATION (Catching standard deviation outliers)
+    // TRAP 4: PARITY BALANCE & SHADOW MUTATION 
     playslipPortfolio["Panel_I"] = { intent: "Same-Day Bridge Matrix", numbers: buildPanel([...anchors.slice(0,2), ...variance.slice(0,3)]) };
     playslipPortfolio["Panel_J"] = { intent: "Shadow Mutation", numbers: buildPanel([risky[0]||1, risky[1]||4, risky[2]||12, variance[0], anchors[3]]) };
 
