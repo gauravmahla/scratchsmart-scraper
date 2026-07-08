@@ -1,15 +1,15 @@
 // ============================================================================
-// NEURAL HIVE MIND - PHASE 4.5 ENGINE 
-// (ADVANCED MATHEMATICAL TRAPS, WHEELING, & ZERO-TOUCH SYNC)
+// NEURAL HIVE MIND - PHASE 4.6 ENGINE 
+// (HYBRID KDD, DUAL-STREAM MEMORY, 6+4 WHEELING MATRIX)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const WebSocket = require('ws'); 
 
-// Force Node global polyfill as an absolute fail-safe
+// Force Node global polyfill as an absolute fail-safe for GitHub Actions (Node 20)
 global.WebSocket = WebSocket;
 
-// --- 1. CONFIGURATION & SECRETS ---
+// --- 1. CONFIGURATION & SECRETS (HARDCODED PER DIRECTIVE) ---
 const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 
@@ -26,8 +26,10 @@ function generatePortfolioHash(portfolio) {
 }
 
 function buildPanel(numbersArray) {
+    // Enforce rulebook: Exactly 5 unique numbers between 1 and 36
     const unique = Array.from(new Set(numbersArray)).filter(n => typeof n === 'number' && n >= 1 && n <= 36);
-    const fallbacks = [4, 11, 19, 27, 34]; 
+    // Baseline spatial distribution fallbacks if overlap occurs (to guarantee 5 numbers)
+    const fallbacks = [4, 11, 19, 27, 34, 3, 14, 25, 30, 36]; 
     while (unique.length < 5) {
         let fb = fallbacks.shift();
         if (!unique.includes(fb)) unique.push(fb);
@@ -36,34 +38,57 @@ function buildPanel(numbersArray) {
 }
 
 // ============================================================================
-// CORE ENGINE LOGIC: PAST, PRESENT, FUTURE SYNCHRONIZATION
+// CORE ENGINE LOGIC: DUAL-STREAM PAST, KDD PRESENT, 6+4 HYBRID FUTURE
 // ============================================================================
-async function executePhase4_5_HiveEngine(latestOfficialDraw) {
-    console.log("🚀 INITIATING PHASE 4.5: TIME-LOCKED COMBINATORICS...");
-    console.log(`📌 Official Draw Input: [${latestOfficialDraw.join(', ')}]`);
+async function executePhase4_6_HiveEngine(latestOfficialDraw, targetDrawType) {
+    console.log(`🚀 INITIATING PHASE 4.6: DUAL-STREAM KDD HYBRID MATRIX...`);
+    console.log(`📌 Target Draw Physics Locked: [${targetDrawType}]`);
+    console.log(`📌 Official ${targetDrawType} Draw Input: [${latestOfficialDraw.join(', ')}]`);
 
     // ========================================================================
-    // PHASE 1: THE PAST (Memory Retrieval & Strict Retro Grading)
+    // PHASE 1: KDD DELTA MINER (THERMODYNAMIC SHIFT DETECTION)
     // ========================================================================
-    console.log("⏳ Retrieving previous pending portfolio to execute strict grading...");
+    const drawSum = latestOfficialDraw.reduce((a, b) => a + b, 0);
+    let kddShift = "NOMINAL_BELL_CURVE";
+    let kddAction = "Standard Assembly";
+
+    if (drawSum < 70) {
+        kddShift = "EXTREME_LOW_DROP";
+        kddAction = "Deploying Wildcards for Mean-Reversion Bounce";
+        console.log("⚠️ KDD ALERT: Massive thermodynamic drop detected (Sum < 70). Activating Wildcard Nets.");
+    } else if (drawSum > 115) {
+        kddShift = "EXTREME_HIGH_SPIKE";
+        kddAction = "Deploying Wildcards for Mean-Reversion Collapse";
+        console.log("⚠️ KDD ALERT: Massive thermodynamic spike detected (Sum > 115). Activating Wildcard Nets.");
+    }
+
+    // ========================================================================
+    // PHASE 2: THE PAST (Dual-Stream Memory Retrieval & Grading)
+    // ========================================================================
+    console.log(`⏳ Retrieving previous ${targetDrawType} portfolio to execute isolated grading...`);
     
-    // MAPPED TO NEW SCHEMA: daily_mesh_state
-    const { data: previousRun } = await supabase
+    // Fetch last 5 runs to find the specific one that matches our targetDrawType to ensure strict isolation
+    const { data: previousRuns } = await supabase
         .from('daily_mesh_state')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(10);
+
+    let previousRun = null;
+    if (previousRuns) {
+        previousRun = previousRuns.find(run => 
+            run.state_payload && 
+            run.state_payload.experiment_chronology && 
+            run.state_payload.experiment_chronology.target_draw_type === targetDrawType
+        );
+    }
 
     let retroLedger = { status: "AWAITING_DATA", assembly_gap: 0, best_panel_match: "0-of-5", portfolio_recall: [], roi_ledger: {} };
     let previousHash = "UNKNOWN_HASH";
-    let priorFreeTickets = 0;
-    let priorSimSpend = 0;
-    let priorCash = 0;
+    let priorFreeTickets = 0, priorSimSpend = 0, priorCash = 0;
 
-    // SCHEMA CHECK: Accessing the JSONB state_payload column
-    if (previousRun && previousRun.state_payload && previousRun.state_payload.playslip_portfolio) {
-        console.log("✅ Previous Portfolio Validated. Calculating Assembly Gap.");
+    if (previousRun && previousRun.state_payload.playslip_portfolio) {
+        console.log(`✅ Previous ${targetDrawType} Portfolio Validated. Calculating Assembly Gap.`);
         
         const prevPayload = previousRun.state_payload;
         previousHash = prevPayload.experiment_chronology?.cycle_id || generatePortfolioHash(prevPayload.playslip_portfolio);
@@ -93,9 +118,11 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
 
         retroLedger = {
             status: "PORTFOLIO_SCORED",
-            target_evaluated: prevPayload.experiment_chronology?.target_draw_type || "UNKNOWN",
+            target_evaluated: targetDrawType,
             graded_hash: previousHash,
             actual_draw: latestOfficialDraw,
+            kdd_thermodynamic_sum: drawSum,
+            kdd_shift_detected: kddShift,
             portfolio_recall: totalRecall,
             best_panel_match: `${bestMatchCount}-of-5`,
             assembly_gap: assemblyGap > 0 ? assemblyGap : 0,
@@ -109,22 +136,24 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
             }
         };
     } else {
-        console.log("⚠️ Cold Start Detected. Bypassing Grading Sequence.");
+        console.log(`⚠️ Cold Start Detected for ${targetDrawType}. Bypassing Grading Sequence.`);
     }
 
     // ========================================================================
-    // PHASE 2: THE PRESENT (ML Council Adjustments & Dynamic Scoring)
+    // PHASE 3: THE PRESENT (ML Council Adjustments & Dynamic Scoring)
     // ========================================================================
     const activeMiners = {
         "Quant": { signals: [2, 6, 9, 19, 22], tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "HISTORICAL_FREQUENCY_PEAK" },
         "Hacker": { signals: [7, 10, 12, 13, 23], tag_state: "PENDING", council_weight: 0.1, active_hypothesis: "SEQUENTIAL_ANOMALY_EXPLOIT" },
         "Geometer": { signals: [6, 11, 16, 21, 26], tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SPATIAL_CLUSTER_DETECTED" },
         "Contrarian": { signals: [27, 28, 29, 31, 35], tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "MEAN_REVERSION_DEBT" },
-        "SameDayBridge": { signals: [6, 9, 12, 23, 36], tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SAME_DAY_CARRYOVER" }
+        "SameDayBridge": { signals: [6, 9, 12, 23, 36], tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SAME_DAY_CARRYOVER" },
+        "KDD_Anomaly": { signals: [1, 3, 5, 8, 15], tag_state: "PENDING", council_weight: 1.5, active_hypothesis: kddShift } // Injects high weight for wildcards
     };
 
     if (retroLedger.status === "PORTFOLIO_SCORED") {
         Object.keys(activeMiners).forEach(minerName => {
+            if (minerName === "KDD_Anomaly") return; // Keep KDD independent of standard grading
             const hits = activeMiners[minerName].signals.filter(n => retroLedger.portfolio_recall.includes(n)).length;
             if (hits >= 2) {
                 activeMiners[minerName].council_weight = 1.0;
@@ -155,52 +184,56 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     });
 
     // ========================================================================
-    // PHASE 3: THE FUTURE (4-Stage Mathematical Combinatorial Traps)
+    // PHASE 4: THE FUTURE (6+4 HYBRID COMBINATORIAL MATRIX)
     // ========================================================================
-    console.log("🕸️ Assembling Abbreviated Wheeling Matrix...");
+    console.log("🕸️ Assembling 6+4 Hybrid KDD Wheeling Matrix...");
     
-    const sortedEntities = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
-    const anchors = sortedEntities.slice(0, 4).map(e => e.number); 
-    const variance = sortedEntities.slice(4, 9).map(e => e.number); 
-    const risky = sortedEntities.slice(9, 14).map(e => e.number) || [1, 3, 5]; 
+    // Sort descending for Core (Vanguard)
+    const sortedCore = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
+    // Sort ascending for Wildcards (Anomalies / Quarantined)
+    const sortedWildcards = Object.values(entityLedger).filter(e => e.entity_score <= 0.1).sort(() => 0.5 - Math.random()); // Shuffled cold numbers
+
+    const anchors = sortedCore.slice(0, 4).map(e => e.number); 
+    const variance = sortedCore.slice(4, 9).map(e => e.number); 
+    const wildcards = sortedWildcards.slice(0, 15).map(e => e.number);
     
     let playslipPortfolio = {};
 
-    playslipPortfolio["Panel_A"] = { intent: "Vanguard Core (Highest Weight)", numbers: buildPanel([...anchors, variance[0]]) };
-    playslipPortfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: buildPanel([...anchors, variance[1]]) };
+    // ------------------------------------------------------------------------
+    // PANELS A-F: THE VANGUARD TRAPS (Strict Wheeling to Close Assembly Gap)
+    // ------------------------------------------------------------------------
+    playslipPortfolio["Panel_A"] = { intent: "Vanguard Core 1", numbers: buildPanel([anchors[0], anchors[1], anchors[2], variance[0], variance[1]]) };
+    playslipPortfolio["Panel_B"] = { intent: "Vanguard Core 2", numbers: buildPanel([anchors[0], anchors[1], anchors[3], variance[1], variance[2]]) };
+    playslipPortfolio["Panel_C"] = { intent: "Vanguard Variant 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], variance[2], variance[3]]) };
+    playslipPortfolio["Panel_D"] = { intent: "Vanguard Variant 2", numbers: buildPanel([anchors[0], anchors[2], anchors[3], variance[3], variance[4]]) };
+    playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net (Anchor/Var)", numbers: buildPanel([anchors[0], anchors[1], variance[0], variance[3], variance[4]]) };
+    playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net (Anchor/Var)", numbers: buildPanel([anchors[2], anchors[3], variance[1], variance[2], variance[4]]) };
 
-    playslipPortfolio["Panel_C"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[2], risky[0] || variance[2], risky[1] || variance[3]]) };
-    playslipPortfolio["Panel_D"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[3], risky[0] || variance[2], variance[2]]) };
-    playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], risky[1] || variance[3], variance[3]]) };
-    playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net 2", numbers: buildPanel([anchors[0], anchors[2], anchors[3], risky[0] || variance[2], variance[4]]) };
-
-    let pG = [variance[0], variance[1], variance[2], risky[0] || 15, anchors[0]];
-    if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; 
-    if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; 
-    playslipPortfolio["Panel_G"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pG) };
-
-    let pH = [variance[3], variance[4], risky[1] || 16, anchors[1], anchors[2]];
-    if (pH.reduce((a,b)=>a+b,0) < 70) pH[4] = 34;
-    if (pH.reduce((a,b)=>a+b,0) > 100) pH[4] = 3;
-    playslipPortfolio["Panel_H"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pH) };
-
-    playslipPortfolio["Panel_I"] = { intent: "Same-Day Bridge Matrix", numbers: buildPanel([...anchors.slice(0,2), ...variance.slice(0,3)]) };
-    playslipPortfolio["Panel_J"] = { intent: "Shadow Mutation", numbers: buildPanel([risky[0]||1, risky[1]||4, risky[2]||12, variance[0], anchors[3]]) };
+    // ------------------------------------------------------------------------
+    // PANELS G-J: THE KDD WILDCARDS (High-Variance Anomaly Nets)
+    // These intentionally IGNORE anchors to catch thermodynamic standard-deviation breaks
+    // ------------------------------------------------------------------------
+    playslipPortfolio["Panel_G"] = { intent: "KDD Delta Miner (Wildcard Net 1)", numbers: buildPanel([wildcards[0], wildcards[1], wildcards[2], wildcards[3], wildcards[4]]) };
+    playslipPortfolio["Panel_H"] = { intent: "KDD Delta Miner (Wildcard Net 2)", numbers: buildPanel([wildcards[5], wildcards[6], wildcards[7], wildcards[8], wildcards[9]]) };
+    playslipPortfolio["Panel_I"] = { intent: "KDD Delta Miner (Wildcard Net 3)", numbers: buildPanel([wildcards[10], wildcards[11], wildcards[12], wildcards[13], wildcards[14]]) };
+    
+    // Sum-Range Forcer on Panel J
+    let pJ = [wildcards[0], wildcards[5], wildcards[10], wildcards[14], wildcards[2]];
+    if (pJ.reduce((a,b)=>a+b,0) < 70) pJ[4] = 35; 
+    if (pJ.reduce((a,b)=>a+b,0) > 100) pJ[4] = 2;
+    playslipPortfolio["Panel_J"] = { intent: "KDD Sum-Range Balancer", numbers: buildPanel(pJ) };
 
     const pendingHash = generatePortfolioHash(playslipPortfolio);
 
     // ========================================================================
-    // PHASE 4: PAYLOAD COMPILATION & TEMPORAL LOCK
+    // PHASE 5: PAYLOAD COMPILATION & TEMPORAL LOCK
     // ========================================================================
-    const currentHour = new Date().getHours();
-    const targetDrawType = currentHour < 15 ? "Midday" : "Evening"; 
-
     const finalPayload = {
-        schema_version: "PHASE_4.5_MATHEMATICAL_TRAP",
+        schema_version: "PHASE_4.6_HYBRID_KDD",
         experiment_chronology: {
             cycle_id: pendingHash,
             run_timestamp: new Date().toISOString(),
-            source_cutoff: `Evaluated Draw: ${latestOfficialDraw.join('-')}`,
+            source_cutoff: `Evaluated Draw: ${targetDrawType} | ${latestOfficialDraw.join('-')}`,
             target_draw_type: targetDrawType,
             output_classification: "LIVE_FORWARD_TEST",
             official_result_known_at_generation: false
@@ -216,16 +249,15 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         playslip_portfolio: playslipPortfolio,
         daily_standup: {
             status: "DEBATE_CONCLUDED",
-            action_item: "Retro graded against remote DB. Temporal lock achieved. 4-Stage Combinatorial Wheeling deployed."
+            action_item: `Dual-Stream isolated for ${targetDrawType}. KDD Shift evaluated as ${kddShift}. 6+4 Hybrid deployed.`
         }
     };
 
     // ========================================================================
-    // PHASE 5: DATABASE INJECTION (MAPPED TO daily_mesh_state)
+    // PHASE 6: DATABASE INJECTION (MAPPED TO daily_mesh_state)
     // ========================================================================
-    console.log(`💾 Injecting Phase 4.5 Payload to Supabase 'daily_mesh_state'. Pending Hash: ${pendingHash}`);
+    console.log(`💾 Injecting Phase 4.6 Payload to Supabase 'daily_mesh_state'. Pending Hash: ${pendingHash}`);
     
-    // SCHEMA FIX: Wrap payload in 'state_payload' JSONB column and define 'cycle_id'
     const { error: insertError } = await supabase.from('daily_mesh_state').insert([{ 
         cycle_id: pendingHash,
         state_payload: finalPayload 
@@ -234,7 +266,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     if (insertError) {
         console.error("❌ Supabase Save Error:", insertError);
     } else {
-        console.log("✅ Payload successfully written to database. Pipeline Terminated.");
+        console.log("✅ Phase 4.6 Payload successfully written to database. Pipeline Terminated.");
     }
 
     return finalPayload;
@@ -244,22 +276,29 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
 // AUTOMATED END-TO-END EXECUTION TRIGGER
 // ============================================================================
 async function runAutomatedEngine() {
-    console.log("🔍 Fetching latest official draw sequence from Supabase...");
+    console.log("🔍 Resolving Dual-Stream Context...");
     
-    // MAPPED TO NEW SCHEMA: f5_draws (Ordering by id, spaced columns)
+    // Dual-Stream Lock: Isolate Midday physics from Evening physics
+    const currentHour = new Date().getHours();
+    const targetDrawType = currentHour < 15 ? "MIDDAY" : "EVENING"; 
+    
+    console.log(`🔍 Fetching latest official ${targetDrawType} draw sequence from Supabase...`);
+
+    // Fetch STRICTLY the draw type we are evaluating to prevent cross-contamination
     const { data: latestRow, error } = await supabase
         .from('f5_draws') 
         .select('*')
+        .eq('Draw Type', targetDrawType) // Temporal/Mechanical Lock Applied
         .order('id', { ascending: false })
         .limit(1)
         .single();
 
     if (error || !latestRow) {
-        console.error("❌ Fatal Extraction Error: Failed to fetch latest draw from 'f5_draws':", error);
+        console.error(`❌ Fatal Extraction Error: Failed to fetch latest ${targetDrawType} draw from 'f5_draws':`, error);
         process.exit(1);
     }
 
-    // SCHEMA FIX: Read values from spaced column names exactly as provided
+    // Read values strictly from spaced column names exactly as provided in the schema audit
     const latestOfficialDraw = [
         latestRow['Winning Number 1'], 
         latestRow['Winning Number 2'], 
@@ -268,7 +307,7 @@ async function runAutomatedEngine() {
         latestRow['Winning Number 5']
     ].sort((a, b) => a - b);
 
-    await executePhase4_5_HiveEngine(latestOfficialDraw);
+    await executePhase4_6_HiveEngine(latestOfficialDraw, targetDrawType);
 }
 
 runAutomatedEngine()
