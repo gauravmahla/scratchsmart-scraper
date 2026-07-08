@@ -16,12 +16,8 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Inject WebSocket directly into the Realtime transport config
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false },
-    realtime: {
-        transport: WebSocket
-    },
-    global: {
-        WebSocket: WebSocket
-    }
+    realtime: { transport: WebSocket },
+    global: { WebSocket: WebSocket }
 });
 
 // --- 2. CRYPTOGRAPHIC & COMBINATORIAL HELPERS ---
@@ -51,8 +47,9 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     // ========================================================================
     console.log("⏳ Retrieving previous pending portfolio to execute strict grading...");
     
+    // MAPPED TO NEW SCHEMA: daily_mesh_state
     const { data: previousRun } = await supabase
-        .from('hive_logs')
+        .from('daily_mesh_state')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -64,21 +61,24 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     let priorSimSpend = 0;
     let priorCash = 0;
 
-    if (previousRun && previousRun.playslip_portfolio) {
+    // SCHEMA CHECK: Accessing the JSONB state_payload column
+    if (previousRun && previousRun.state_payload && previousRun.state_payload.playslip_portfolio) {
         console.log("✅ Previous Portfolio Validated. Calculating Assembly Gap.");
-        previousHash = previousRun.experiment_chronology?.cycle_id || generatePortfolioHash(previousRun.playslip_portfolio);
         
-        priorFreeTickets = previousRun.retro_ledger?.roi_ledger?.free_tickets_banked || 0;
-        priorSimSpend = previousRun.retro_ledger?.roi_ledger?.simulated_spend || 0;
-        priorCash = previousRun.retro_ledger?.roi_ledger?.cash_prizes || 0;
+        const prevPayload = previousRun.state_payload;
+        previousHash = prevPayload.experiment_chronology?.cycle_id || generatePortfolioHash(prevPayload.playslip_portfolio);
+        
+        priorFreeTickets = prevPayload.retro_ledger?.roi_ledger?.free_tickets_banked || 0;
+        priorSimSpend = prevPayload.retro_ledger?.roi_ledger?.simulated_spend || 0;
+        priorCash = prevPayload.retro_ledger?.roi_ledger?.cash_prizes || 0;
 
         let bestMatchCount = 0;
         let trappedNumbers = new Set();
         let panelBreakdown = {};
         let winningPanels = 0;
 
-        Object.keys(previousRun.playslip_portfolio).forEach(panelKey => {
-            const panelNumbers = previousRun.playslip_portfolio[panelKey].numbers;
+        Object.keys(prevPayload.playslip_portfolio).forEach(panelKey => {
+            const panelNumbers = prevPayload.playslip_portfolio[panelKey].numbers;
             const matches = panelNumbers.filter(n => latestOfficialDraw.includes(n));
             matches.forEach(n => trappedNumbers.add(n));
             
@@ -93,7 +93,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
 
         retroLedger = {
             status: "PORTFOLIO_SCORED",
-            target_evaluated: previousRun.experiment_chronology?.target_draw_type || "UNKNOWN",
+            target_evaluated: prevPayload.experiment_chronology?.target_draw_type || "UNKNOWN",
             graded_hash: previousHash,
             actual_draw: latestOfficialDraw,
             portfolio_recall: totalRecall,
@@ -166,17 +166,14 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     
     let playslipPortfolio = {};
 
-    // TRAP 1: VANGUARD CORE 
     playslipPortfolio["Panel_A"] = { intent: "Vanguard Core (Highest Weight)", numbers: buildPanel([...anchors, variance[0]]) };
     playslipPortfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: buildPanel([...anchors, variance[1]]) };
 
-    // TRAP 2: CROSS-POLLINATION WHEEL 
     playslipPortfolio["Panel_C"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[2], risky[0] || variance[2], risky[1] || variance[3]]) };
     playslipPortfolio["Panel_D"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[3], risky[0] || variance[2], variance[2]]) };
     playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], risky[1] || variance[3], variance[3]]) };
     playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net 2", numbers: buildPanel([anchors[0], anchors[2], anchors[3], risky[0] || variance[2], variance[4]]) };
 
-    // TRAP 3: SUM-RANGE BALANCING 
     let pG = [variance[0], variance[1], variance[2], risky[0] || 15, anchors[0]];
     if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; 
     if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; 
@@ -187,7 +184,6 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     if (pH.reduce((a,b)=>a+b,0) > 100) pH[4] = 3;
     playslipPortfolio["Panel_H"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pH) };
 
-    // TRAP 4: PARITY BALANCE & SHADOW MUTATION 
     playslipPortfolio["Panel_I"] = { intent: "Same-Day Bridge Matrix", numbers: buildPanel([...anchors.slice(0,2), ...variance.slice(0,3)]) };
     playslipPortfolio["Panel_J"] = { intent: "Shadow Mutation", numbers: buildPanel([risky[0]||1, risky[1]||4, risky[2]||12, variance[0], anchors[3]]) };
 
@@ -225,11 +221,16 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     };
 
     // ========================================================================
-    // PHASE 5: DATABASE INJECTION
+    // PHASE 5: DATABASE INJECTION (MAPPED TO daily_mesh_state)
     // ========================================================================
-    console.log(`💾 Injecting Phase 4.5 Payload to Supabase. Pending Hash: ${pendingHash}`);
+    console.log(`💾 Injecting Phase 4.5 Payload to Supabase 'daily_mesh_state'. Pending Hash: ${pendingHash}`);
     
-    const { error: insertError } = await supabase.from('hive_logs').insert([ finalPayload ]);
+    // SCHEMA FIX: Wrap payload in 'state_payload' JSONB column and define 'cycle_id'
+    const { error: insertError } = await supabase.from('daily_mesh_state').insert([{ 
+        cycle_id: pendingHash,
+        state_payload: finalPayload 
+    }]);
+
     if (insertError) {
         console.error("❌ Supabase Save Error:", insertError);
     } else {
@@ -245,24 +246,26 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
 async function runAutomatedEngine() {
     console.log("🔍 Fetching latest official draw sequence from Supabase...");
     
+    // MAPPED TO NEW SCHEMA: f5_draws (Ordering by id, spaced columns)
     const { data: latestRow, error } = await supabase
-        .from('florida_fantasy_5') 
-        .select('num1, num2, num3, num4, num5')
-        .order('created_at', { ascending: false })
+        .from('f5_draws') 
+        .select('*')
+        .order('id', { ascending: false })
         .limit(1)
         .single();
 
     if (error || !latestRow) {
-        console.error("❌ Fatal Extraction Error: Failed to fetch latest draw from Supabase:", error);
+        console.error("❌ Fatal Extraction Error: Failed to fetch latest draw from 'f5_draws':", error);
         process.exit(1);
     }
 
+    // SCHEMA FIX: Read values from spaced column names exactly as provided
     const latestOfficialDraw = [
-        latestRow.num1, 
-        latestRow.num2, 
-        latestRow.num3, 
-        latestRow.num4, 
-        latestRow.num5
+        latestRow['Winning Number 1'], 
+        latestRow['Winning Number 2'], 
+        latestRow['Winning Number 3'], 
+        latestRow['Winning Number 4'], 
+        latestRow['Winning Number 5']
     ].sort((a, b) => a - b);
 
     await executePhase4_5_HiveEngine(latestOfficialDraw);
