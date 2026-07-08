@@ -1,22 +1,24 @@
 // ============================================================================
-// NEURAL HIVE MIND - PHASE 4.5 ENGINE (MATHEMATICAL TRAPS & ZERO-TOUCH SYNC)
+// NEURAL HIVE MIND - PHASE 4.5 ENGINE 
+// (ADVANCED MATHEMATICAL TRAPS, WHEELING, & ZERO-TOUCH SYNC)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-// --- 1. CONFIGURATION & SECRETS ---
-const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'YOUR_SUPABASE_KEY';
+// --- 1. CONFIGURATION & SECRETS (HARDCODED FOR MOBILE WORKFLOW) ---
+const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- 2. HELPER FUNCTIONS ---
+// --- 2. CRYPTOGRAPHIC & COMBINATORIAL HELPERS ---
 function generatePortfolioHash(portfolio) {
     return 'HASH-' + crypto.createHash('sha256').update(JSON.stringify(portfolio)).digest('hex').substring(0, 8).toUpperCase();
 }
 
 function buildPanel(numbersArray) {
-    const unique = Array.from(new Set(numbersArray)).filter(n => n >= 1 && n <= 36);
-    const fallbacks = [7, 14, 21, 28, 35]; 
+    const unique = Array.from(new Set(numbersArray)).filter(n => typeof n === 'number' && n >= 1 && n <= 36);
+    // Baseline spatial distribution fallbacks if overlap occurs
+    const fallbacks = [4, 11, 19, 27, 34]; 
     while (unique.length < 5) {
         let fb = fallbacks.shift();
         if (!unique.includes(fb)) unique.push(fb);
@@ -25,14 +27,16 @@ function buildPanel(numbersArray) {
 }
 
 // ============================================================================
-// CORE ENGINE LOGIC
+// CORE ENGINE LOGIC: PAST, PRESENT, FUTURE SYNCHRONIZATION
 // ============================================================================
 async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     console.log("🚀 INITIATING PHASE 4.5: TIME-LOCKED COMBINATORICS...");
     console.log(`📌 Official Draw Input: [${latestOfficialDraw.join(', ')}]`);
 
-    // --- PHASE 1: THE PAST (Memory Retrieval & Strict Retro Grading) ---
-    console.log("⏳ Retrieving previous pending portfolio for strict grading...");
+    // ========================================================================
+    // PHASE 1: THE PAST (Memory Retrieval & Strict Retro Grading)
+    // ========================================================================
+    console.log("⏳ Retrieving previous pending portfolio to execute strict grading...");
     
     const { data: previousRun } = await supabase
         .from('hive_logs')
@@ -48,7 +52,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     let priorCash = 0;
 
     if (previousRun && previousRun.playslip_portfolio) {
-        console.log("✅ Previous Portfolio Found. Executing Strict Retro Grade.");
+        console.log("✅ Previous Portfolio Validated. Calculating Assembly Gap.");
         previousHash = previousRun.experiment_chronology?.cycle_id || generatePortfolioHash(previousRun.playslip_portfolio);
         
         priorFreeTickets = previousRun.retro_ledger?.roi_ledger?.free_tickets_banked || 0;
@@ -60,6 +64,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         let panelBreakdown = {};
         let winningPanels = 0;
 
+        // Grade the specific ticket generated prior to the draw
         Object.keys(previousRun.playslip_portfolio).forEach(panelKey => {
             const panelNumbers = previousRun.playslip_portfolio[panelKey].numbers;
             const matches = panelNumbers.filter(n => latestOfficialDraw.includes(n));
@@ -88,15 +93,18 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
                 cash_prizes: priorCash + (bestMatchCount === 3 ? 20 : bestMatchCount === 4 ? 100 : bestMatchCount === 5 ? 200000 : 0),
                 free_tickets_banked: priorFreeTickets + (bestMatchCount === 2 ? winningPanels : 0),
                 behavioral_mode: ((priorFreeTickets + winningPanels) > 5) ? "PLAY_SAFE" : "AMBITIOUS_RECOVERY",
-                system_lift: bestMatchCount >= 2 ? `+${(bestMatchCount*1.5)}x vs Random` : "Baseline Maintenance"
+                system_lift: bestMatchCount >= 2 ? `+${(bestMatchCount * 1.5).toFixed(1)}x vs Random` : "Baseline Maintenance"
             }
         };
     } else {
-        console.log("⚠️ Cold Start detected. Bypassing Retro Grade.");
+        console.log("⚠️ Cold Start Detected. Bypassing Grading Sequence.");
     }
 
-    // --- PHASE 2: THE PRESENT (ML Council Base Signals & Adjustments) ---
-    // Simulating the 5 Agent algorithms based on system distribution
+    // ========================================================================
+    // PHASE 2: THE PRESENT (ML Council Adjustments & Dynamic Scoring)
+    // ========================================================================
+    
+    // Baseline Agent Subroutines (To be replaced by full historical DB scans in production)
     const activeMiners = {
         "Quant": { signals: [2, 6, 9, 19, 22], tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "HISTORICAL_FREQUENCY_PEAK" },
         "Hacker": { signals: [7, 10, 12, 13, 23], tag_state: "PENDING", council_weight: 0.1, active_hypothesis: "SEQUENTIAL_ANOMALY_EXPLOIT" },
@@ -105,7 +113,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         "SameDayBridge": { signals: [6, 9, 12, 23, 36], tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SAME_DAY_CARRYOVER" }
     };
 
-    // Apply Retro Penalties & Promotions
+    // Apply strict penalties/promotions based on the isolated Retro Grade
     if (retroLedger.status === "PORTFOLIO_SCORED") {
         Object.keys(activeMiners).forEach(minerName => {
             const hits = activeMiners[minerName].signals.filter(n => retroLedger.portfolio_recall.includes(n)).length;
@@ -122,7 +130,7 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         });
     }
 
-    // Generate Entity Ledger (1-36 Matrix)
+    // Build the 1-36 Entity Convergence Matrix
     let entityLedger = {};
     for (let i = 1; i <= 36; i++) {
         entityLedger[i] = { number: i, selected_by: [], tag_history: [], entity_score: 0 };
@@ -138,30 +146,33 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         });
     });
 
-    // --- PHASE 3: THE FUTURE (4 Mathematical Traps) ---
-    console.log("🕸️ Deploying 4-Stage Mathematical Combinatorial Traps...");
+    // ========================================================================
+    // PHASE 3: THE FUTURE (4-Stage Mathematical Combinatorial Traps)
+    // ========================================================================
+    console.log("🕸️ Assembling Abbreviated Wheeling Matrix...");
     
+    // Sort array descending to segregate Anchors from Variance/Anomalies
     const sortedEntities = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
     const anchors = sortedEntities.slice(0, 4).map(e => e.number); 
     const variance = sortedEntities.slice(4, 9).map(e => e.number); 
-    const risky = sortedEntities.slice(9, 14).map(e => e.number) || [1,3,5]; 
+    const risky = sortedEntities.slice(9, 14).map(e => e.number) || [1, 3, 5]; 
     
     let playslipPortfolio = {};
 
-    // TRAP 1: VANGUARD CORE (Panels A & B)
+    // TRAP 1: VANGUARD CORE (Direct High-Trust Density)
     playslipPortfolio["Panel_A"] = { intent: "Vanguard Core (Highest Weight)", numbers: buildPanel([...anchors, variance[0]]) };
     playslipPortfolio["Panel_B"] = { intent: "Vanguard Variant", numbers: buildPanel([...anchors, variance[1]]) };
 
-    // TRAP 2: CROSS-POLLINATION WHEEL (Panels C, D, E, F) - Forces Anchors to mix with Risks
+    // TRAP 2: CROSS-POLLINATION WHEEL (Forces Vanguard to interact with High-Risk Tail to eliminate Assembly Gap)
     playslipPortfolio["Panel_C"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[2], risky[0] || variance[2], risky[1] || variance[3]]) };
     playslipPortfolio["Panel_D"] = { intent: "Combinatorial Net (Anchor/Risk Blend)", numbers: buildPanel([anchors[0], anchors[1], anchors[3], risky[0] || variance[2], variance[2]]) };
     playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], risky[1] || variance[3], variance[3]]) };
     playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net 2", numbers: buildPanel([anchors[0], anchors[2], anchors[3], risky[0] || variance[2], variance[4]]) };
 
-    // TRAP 3: SUM-RANGE BALANCING (Panels G & H) - Targeting 70-100 sum
+    // TRAP 3: SUM-RANGE BALANCING (Explicit targeting of the 70-100 mathematical curve)
     let pG = [variance[0], variance[1], variance[2], risky[0] || 15, anchors[0]];
-    if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; 
-    if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; 
+    if (pG.reduce((a,b)=>a+b,0) < 70) pG[4] = 35; // Floor correction
+    if (pG.reduce((a,b)=>a+b,0) > 100) pG[4] = 2; // Ceiling correction
     playslipPortfolio["Panel_G"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pG) };
 
     let pH = [variance[3], variance[4], risky[1] || 16, anchors[1], anchors[2]];
@@ -169,13 +180,15 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
     if (pH.reduce((a,b)=>a+b,0) > 100) pH[4] = 3;
     playslipPortfolio["Panel_H"] = { intent: "Trap 3: Sum-Range Balancing (70-100)", numbers: buildPanel(pH) };
 
-    // TRAP 4: PARITY BALANCE & SHADOW MUTATION (Panels I & J)
+    // TRAP 4: PARITY BALANCE & SHADOW MUTATION (Catching standard deviation outliers)
     playslipPortfolio["Panel_I"] = { intent: "Same-Day Bridge Matrix", numbers: buildPanel([...anchors.slice(0,2), ...variance.slice(0,3)]) };
     playslipPortfolio["Panel_J"] = { intent: "Shadow Mutation", numbers: buildPanel([risky[0]||1, risky[1]||4, risky[2]||12, variance[0], anchors[3]]) };
 
     const pendingHash = generatePortfolioHash(playslipPortfolio);
 
-    // --- PHASE 4: JSON PAYLOAD COMPILATION ---
+    // ========================================================================
+    // PHASE 4: PAYLOAD COMPILATION & TEMPORAL LOCK
+    // ========================================================================
     const currentHour = new Date().getHours();
     const targetDrawType = currentHour < 15 ? "Midday" : "Evening"; 
 
@@ -200,30 +213,31 @@ async function executePhase4_5_HiveEngine(latestOfficialDraw) {
         playslip_portfolio: playslipPortfolio,
         daily_standup: {
             status: "DEBATE_CONCLUDED",
-            action_item: "Retro graded against database. Temporal lock achieved. 4-Stage Combinatorial Traps deployed for pending draw."
+            action_item: "Retro graded against remote DB. Temporal lock achieved. 4-Stage Combinatorial Wheeling deployed."
         }
     };
 
-    // --- PHASE 5: DATABASE SAVE ---
-    console.log(`💾 Saving Phase 4.5 Payload to Supabase. Pending Hash: ${pendingHash}`);
+    // ========================================================================
+    // PHASE 5: DATABASE INJECTION
+    // ========================================================================
+    console.log(`💾 Injecting Phase 4.5 Payload to Supabase. Pending Hash: ${pendingHash}`);
     
     const { error: insertError } = await supabase.from('hive_logs').insert([ finalPayload ]);
     if (insertError) {
         console.error("❌ Supabase Save Error:", insertError);
     } else {
-        console.log("✅ Payload successfully written to database.");
+        console.log("✅ Payload successfully written to database. Pipeline Terminated.");
     }
 
     return finalPayload;
 }
 
 // ============================================================================
-// AUTOMATED EXECUTION TRIGGER (Zero-Touch)
+// AUTOMATED END-TO-END EXECUTION TRIGGER
 // ============================================================================
 async function runAutomatedEngine() {
-    console.log("🔍 Fetching latest official draw from Supabase...");
+    console.log("🔍 Fetching latest official draw sequence from Supabase...");
     
-    // FETCH THE LATEST DRAW FROM YOUR HISTORICAL TABLE
     const { data: latestRow, error } = await supabase
         .from('florida_fantasy_5') 
         .select('num1, num2, num3, num4, num5')
@@ -232,7 +246,7 @@ async function runAutomatedEngine() {
         .single();
 
     if (error || !latestRow) {
-        console.error("❌ Failed to fetch latest draw from Supabase:", error);
+        console.error("❌ Fatal Extraction Error: Failed to fetch latest draw from Supabase:", error);
         process.exit(1);
     }
 
@@ -247,7 +261,6 @@ async function runAutomatedEngine() {
     await executePhase4_5_HiveEngine(latestOfficialDraw);
 }
 
-// RUN THE SCRIPT
 runAutomatedEngine()
     .then(() => process.exit(0))
     .catch(err => {
