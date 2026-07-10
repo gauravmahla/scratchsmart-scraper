@@ -1,6 +1,6 @@
 // ============================================================================
-// NEURAL HIVE MIND - PHASE 5 STRATIFIED MACRO-ENGINE
-// (DUAL-EPOCH KDD, DAY 1 RESET, 6+4 HYBRID MATRIX)
+// NEURAL HIVE MIND - PHASE 5.1 TEMPORAL MACRO-ENGINE
+// (DUAL-EPOCH KDD, RULEBOOK CUTOFFS, 6+4 HYBRID MATRIX)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
@@ -34,17 +34,17 @@ function buildPanel(numbersArray) {
 }
 
 // ============================================================================
-// CORE ENGINE LOGIC: PHASE 5 STRATIFIED KDD
+// CORE ENGINE LOGIC: PHASE 5.1
 // ============================================================================
-async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws) {
-    console.log(`🚀 INITIATING PHASE 5: STRATIFIED MACRO-KDD MATRIX (DAY 1 RESET)`);
-    console.log(`📌 Target Draw Physics Locked: [${targetDrawType}]`);
-    console.log(`📌 Macro Scan Depth: [${historicalDraws.length}] Draws Loaded across Dual Epochs.`);
+async function executePhase5_1_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws, flTimeString) {
+    console.log(`🚀 INITIATING PHASE 5.1: TEMPORAL MACRO-KDD MATRIX`);
+    console.log(`📌 Florida Time Verified: [${flTimeString}]`);
+    console.log(`📌 Target Draw Locked: [${targetDrawType}]`);
+    console.log(`📌 Macro Scan Depth: [${historicalDraws.length}] Draws Loaded.`);
 
     // ========================================================================
     // DEEP HISTORICAL DATA MINING (Stratified Base Rates)
     // ========================================================================
-    console.log("🧠 Executing Stratified Macro Data Mining across decades...");
     let frequencyMap = {};
     for (let i = 1; i <= 36; i++) frequencyMap[i] = 0;
     
@@ -54,24 +54,16 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
 
     const sortedByFreq = Object.entries(frequencyMap).sort((a, b) => b[1] - a[1]);
     
-    // 1. Quant (Top 5 Most Frequent across the Dual Epochs)
     const quantSignals = sortedByFreq.slice(0, 5).map(e => parseInt(e[0]));
-    
-    // 2. Contrarian (Top 5 Least Frequent / Long-Term Cyclical Debt)
     const contrarianSignals = sortedByFreq.slice(-5).map(e => parseInt(e[0]));
     
-    // 3. Geometer (Spatial Adjacency +/- 1 from live draw)
     let geometerSet = new Set();
     latestOfficialDraw.forEach(n => {
         if (n > 1) geometerSet.add(n - 1);
         if (n < 36) geometerSet.add(n + 1);
     });
     const geometerSignals = Array.from(geometerSet).slice(0, 5);
-
-    // 4. SameDayBridge (Live momentum)
     const sameDaySignals = latestOfficialDraw;
-
-    // 5. Hacker (High Volatility Pseudo-Random)
     const hackerSignals = [
         Math.floor(Math.random() * 9) + 1,
         Math.floor(Math.random() * 9) + 10,
@@ -99,14 +91,13 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
     }
 
     // ========================================================================
-    // RETRO EVIDENCE GRADING (Ghost Filter)
+    // RETRO EVIDENCE GRADING (Strict Target Matching)
     // ========================================================================
-    console.log(`⏳ Fetching previous ${targetDrawType} payload to run validation...`);
     const { data: previousRuns } = await supabase
         .from('daily_mesh_state')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(15); // Expanded limit to find matching target type safely
 
     let retroLedger = { status: "AWAITING_DATA", assembly_gap: 0, best_panel_match: "0-of-5", portfolio_recall: [], roi_ledger: {} };
     let previousHash = "UNKNOWN_HASH";
@@ -162,7 +153,7 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
     }
 
     // ========================================================================
-    // ML COUNCIL WEIGHT CALIBRATION (Day 1 Reset)
+    // ML COUNCIL WEIGHT CALIBRATION
     // ========================================================================
     const activeMiners = {
         "Quant": { signals: quantSignals, tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "MACRO_FREQUENCY_PEAK" },
@@ -206,7 +197,7 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
     });
 
     // ========================================================================
-    // HYBRID COMBINATORIAL TRAAPS (6+4 MATRIX)
+    // HYBRID COMBINATORIAL TRAPS (6+4 MATRIX)
     // ========================================================================
     const sortedCore = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
     const sortedWildcards = Object.values(entityLedger).filter(e => e.entity_score <= 0.1).sort(() => 0.5 - Math.random()); 
@@ -236,10 +227,11 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
     const pendingHash = generatePortfolioHash(playslipPortfolio);
 
     const finalPayload = {
-        schema_version: "PHASE_5_MACRO_KDD",
+        schema_version: "PHASE_5.1_TEMPORAL_MACRO",
         experiment_chronology: {
             cycle_id: pendingHash,
-            run_timestamp: new Date().toISOString(),
+            run_timestamp: new Date().toISOString(), // UTC for DB record
+            florida_time_evaluated: flTimeString, // Explicit local time marker
             source_cutoff: `Evaluated Draw: ${targetDrawType} | ${latestOfficialDraw.join('-')}`,
             target_draw_type: targetDrawType,
             output_classification: "LIVE_FORWARD_TEST",
@@ -252,22 +244,42 @@ async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, hist
         playslip_portfolio: playslipPortfolio,
         daily_standup: {
             status: "DEBATE_CONCLUDED",
-            action_item: `Phase 5 Stratified Macro Engine Active. Dual-Epoch scan depth [${historicalDraws.length}] executed.`
+            action_item: `Phase 5.1 Temporal Lock Active. FL Time: ${flTimeString}. Target: ${targetDrawType}.`
         }
     };
 
-    console.log(`💾 Writing Phase 5 Dynamic Payload to Supabase. Hash: ${pendingHash}`);
+    console.log(`💾 Writing Phase 5.1 Payload to Supabase. Hash: ${pendingHash}`);
     await supabase.from('daily_mesh_state').insert([{ cycle_id: pendingHash, state_payload: finalPayload }]);
-    console.log("✅ Phase 5 Hard Reset finalized successfully.");
+    console.log("✅ Process finalized successfully.");
 }
 
 // ============================================================================
-// AUTOMATED EXECUTION: DUAL-EPOCH STRATIFIED FETCH
+// AUTOMATED EXECUTION: DUAL-EPOCH STRATIFIED FETCH & TEMPORAL LOCK
 // ============================================================================
 async function runAutomatedEngine() {
-    const currentHour = new Date().getHours();
-    const targetDrawType = currentHour < 15 ? "MIDDAY" : "EVENING"; 
+    // TEMPORAL LOCK: Calculate exact time in Florida (America/New_York)
+    const options = { timeZone: 'America/New_York', hour12: false, hour: 'numeric', minute: 'numeric' };
+    const flTimeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
     
+    const [hourStr, minStr] = flTimeString.split(':');
+    const flHour = parseInt(hourStr, 10);
+    const flMin = parseInt(minStr, 10);
+    const flTimeDecimal = flHour + (flMin / 60);
+
+    let targetDrawType = "EVENING"; 
+    
+    // Rulebook Cutoffs: Midday Terminal closes at 12:45 PM (12.75). Evening at 10:40 PM (22.66)
+    if (flTimeDecimal < 12.75) {
+        targetDrawType = "MIDDAY";
+        console.log(`🕒 FL Time: ${flTimeString}. Midday Terminal is OPEN.`);
+    } else if (flTimeDecimal < 22.66) {
+        targetDrawType = "EVENING";
+        console.log(`🕒 FL Time: ${flTimeString}. Midday Terminal CLOSED. Evening Terminal is OPEN.`);
+    } else {
+        targetDrawType = "MIDDAY"; // Rolls over to tomorrow's Midday
+        console.log(`🕒 FL Time: ${flTimeString}. All Terminals CLOSED for today. Targeting Tomorrow Midday.`);
+    }
+
     console.log(`📡 Querying Supabase for Dual-Epoch Stratified Training Array...`);
     
     // 1. Fetch Epoch 1: The Modern Physics (Last 500 Draws)
@@ -291,10 +303,9 @@ async function runAutomatedEngine() {
         process.exit(1);
     }
 
-    // Combine both epochs to create a 1,000-draw stratified sample
     const historyRows = [...recentRows, ...(deepRows || [])];
-
     const latestRow = recentRows[0];
+    
     const latestOfficialDraw = [
         latestRow['Winning Number 1'], latestRow['Winning Number 2'], 
         latestRow['Winning Number 3'], latestRow['Winning Number 4'], 
@@ -306,7 +317,7 @@ async function runAutomatedEngine() {
         row['Winning Number 3'], row['Winning Number 4'], row['Winning Number 5']
     ]);
 
-    await executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws);
+    await executePhase5_1_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws, flTimeString);
 }
 
 runAutomatedEngine()
