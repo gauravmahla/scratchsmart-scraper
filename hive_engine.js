@@ -1,12 +1,12 @@
 // ============================================================================
-// NEURAL HIVE MIND - PHASE 4.7 ENGINE 
-// (DYNAMIC ML ARRAYS, KDD THERMODYNAMICS, 6+4 HYBRID MATRIX)
+// NEURAL HIVE MIND - PHASE 5 STRATIFIED MACRO-ENGINE
+// (DUAL-EPOCH KDD, DAY 1 RESET, 6+4 HYBRID MATRIX)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const WebSocket = require('ws'); 
 
-// Force Node global polyfill as an absolute fail-safe for GitHub Actions (Node 20)
+// Force Node global polyfill as an absolute fail-safe for GitHub Actions
 global.WebSocket = WebSocket;
 
 // --- 1. CONFIGURATION & SECRETS ---
@@ -19,7 +19,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     global: { WebSocket: WebSocket }
 });
 
-// --- 2. CRYPTOGRAPHIC & COMBINATORIAL HELPERS ---
 function generatePortfolioHash(portfolio) {
     return 'HASH-' + crypto.createHash('sha256').update(JSON.stringify(portfolio)).digest('hex').substring(0, 8).toUpperCase();
 }
@@ -35,17 +34,17 @@ function buildPanel(numbersArray) {
 }
 
 // ============================================================================
-// CORE ENGINE LOGIC: PHASE 4.7 DYNAMIC ML CALCULATION
+// CORE ENGINE LOGIC: PHASE 5 STRATIFIED KDD
 // ============================================================================
-async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws) {
-    console.log(`🚀 INITIATING PHASE 4.7: DYNAMIC ML MATRIX...`);
+async function executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws) {
+    console.log(`🚀 INITIATING PHASE 5: STRATIFIED MACRO-KDD MATRIX (DAY 1 RESET)`);
     console.log(`📌 Target Draw Physics Locked: [${targetDrawType}]`);
-    console.log(`📌 Official ${targetDrawType} Draw Input: [${latestOfficialDraw.join(', ')}]`);
+    console.log(`📌 Macro Scan Depth: [${historicalDraws.length}] Draws Loaded across Dual Epochs.`);
 
     // ========================================================================
-    // DYNAMIC ML ALGORITHMS (Replacing Static Arrays)
+    // DEEP HISTORICAL DATA MINING (Stratified Base Rates)
     // ========================================================================
-    console.log("🧠 Calculating live frequencies and standard deviations...");
+    console.log("🧠 Executing Stratified Macro Data Mining across decades...");
     let frequencyMap = {};
     for (let i = 1; i <= 36; i++) frequencyMap[i] = 0;
     
@@ -55,13 +54,13 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
 
     const sortedByFreq = Object.entries(frequencyMap).sort((a, b) => b[1] - a[1]);
     
-    // 1. Quant (Top 5 Most Frequent)
+    // 1. Quant (Top 5 Most Frequent across the Dual Epochs)
     const quantSignals = sortedByFreq.slice(0, 5).map(e => parseInt(e[0]));
     
-    // 2. Contrarian (Top 5 Least Frequent / Coldest)
+    // 2. Contrarian (Top 5 Least Frequent / Long-Term Cyclical Debt)
     const contrarianSignals = sortedByFreq.slice(-5).map(e => parseInt(e[0]));
     
-    // 3. Geometer (Spatial Adjacency +/- 1 from last draw)
+    // 3. Geometer (Spatial Adjacency +/- 1 from live draw)
     let geometerSet = new Set();
     latestOfficialDraw.forEach(n => {
         if (n > 1) geometerSet.add(n - 1);
@@ -69,10 +68,10 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     });
     const geometerSignals = Array.from(geometerSet).slice(0, 5);
 
-    // 4. SameDayBridge (Carryover momentum)
+    // 4. SameDayBridge (Live momentum)
     const sameDaySignals = latestOfficialDraw;
 
-    // 5. Hacker (High Volatility / Pseudo-Random Anomaly Exploit)
+    // 5. Hacker (High Volatility Pseudo-Random)
     const hackerSignals = [
         Math.floor(Math.random() * 9) + 1,
         Math.floor(Math.random() * 9) + 10,
@@ -82,7 +81,7 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     ];
 
     // ========================================================================
-    // KDD DELTA MINER (DYNAMIC THERMODYNAMIC SHIFT DETECTION)
+    // KDD DYNAMIC BEAR TRAP (Thermodynamic Shift)
     // ========================================================================
     const drawSum = latestOfficialDraw.reduce((a, b) => a + b, 0);
     let kddShift = "NOMINAL_BELL_CURVE";
@@ -90,21 +89,19 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
 
     if (drawSum < 70) {
         kddShift = "EXTREME_LOW_DROP";
-        kddSignals = [2, 4, 6, 8, 10]; // Dynamically target low-range
-        console.log("⚠️ KDD ALERT: Massive thermodynamic drop detected (Sum < 70).");
+        kddSignals = [2, 4, 6, 8, 10]; 
     } else if (drawSum > 115) {
         kddShift = "EXTREME_HIGH_SPIKE";
-        kddSignals = [27, 29, 31, 34, 36]; // Dynamically target high-range
-        console.log("⚠️ KDD ALERT: Massive thermodynamic spike detected (Sum > 115).");
+        kddSignals = [27, 29, 31, 34, 36]; 
     } else {
         kddShift = "NOMINAL_BELL_CURVE";
-        kddSignals = [12, 15, 18, 21, 24]; // Dynamically target the bell curve center
+        kddSignals = [12, 15, 18, 21, 24]; 
     }
 
     // ========================================================================
-    // GRADING THE PAST (Filtering Ghost Payloads)
+    // RETRO EVIDENCE GRADING (Ghost Filter)
     // ========================================================================
-    console.log(`⏳ Retrieving previous ${targetDrawType} portfolio to execute isolated grading...`);
+    console.log(`⏳ Fetching previous ${targetDrawType} payload to run validation...`);
     const { data: previousRuns } = await supabase
         .from('daily_mesh_state')
         .select('*')
@@ -114,7 +111,6 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     let retroLedger = { status: "AWAITING_DATA", assembly_gap: 0, best_panel_match: "0-of-5", portfolio_recall: [], roi_ledger: {} };
     let previousHash = "UNKNOWN_HASH";
 
-    // Ghost Payload Filter: Find the first payload where output_classification exists
     let previousRun = null;
     if (previousRuns) {
         previousRun = previousRuns.find(run => 
@@ -125,8 +121,6 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     }
 
     if (previousRun && previousRun.state_payload.playslip_portfolio) {
-        console.log(`✅ Previous ${targetDrawType} Portfolio Validated. Calculating true ML performance.`);
-        
         const prevPayload = previousRun.state_payload;
         previousHash = prevPayload.experiment_chronology?.cycle_id || "LEGACY_HASH";
         
@@ -168,13 +162,13 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     }
 
     // ========================================================================
-    // ML COUNCIL ADJUSTMENTS
+    // ML COUNCIL WEIGHT CALIBRATION (Day 1 Reset)
     // ========================================================================
     const activeMiners = {
-        "Quant": { signals: quantSignals, tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "HISTORICAL_FREQUENCY_PEAK" },
+        "Quant": { signals: quantSignals, tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "MACRO_FREQUENCY_PEAK" },
         "Hacker": { signals: hackerSignals, tag_state: "PENDING", council_weight: 0.1, active_hypothesis: "SEQUENTIAL_ANOMALY_EXPLOIT" },
         "Geometer": { signals: geometerSignals, tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SPATIAL_CLUSTER_DETECTED" },
-        "Contrarian": { signals: contrarianSignals, tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "MEAN_REVERSION_DEBT" },
+        "Contrarian": { signals: contrarianSignals, tag_state: "PENDING", council_weight: 1.0, active_hypothesis: "MACRO_REVERSION_DEBT" },
         "SameDayBridge": { signals: sameDaySignals, tag_state: "PENDING", council_weight: 0.5, active_hypothesis: "SAME_DAY_CARRYOVER" },
         "KDD_Anomaly": { signals: kddSignals, tag_state: "PENDING", council_weight: 1.5, active_hypothesis: kddShift }
     };
@@ -212,10 +206,8 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     });
 
     // ========================================================================
-    // 6+4 HYBRID COMBINATORIAL MATRIX (Reeling the Fish)
+    // HYBRID COMBINATORIAL TRAAPS (6+4 MATRIX)
     // ========================================================================
-    console.log("🕸️ Assembling 6+4 Hybrid KDD Wheeling Matrix...");
-    
     const sortedCore = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
     const sortedWildcards = Object.values(entityLedger).filter(e => e.entity_score <= 0.1).sort(() => 0.5 - Math.random()); 
 
@@ -225,7 +217,6 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     
     let playslipPortfolio = {};
 
-    // PANELS A-F: THE VANGUARD TRAPS 
     playslipPortfolio["Panel_A"] = { intent: "Vanguard Core 1", numbers: buildPanel([anchors[0], anchors[1], anchors[2], variance[0], variance[1]]) };
     playslipPortfolio["Panel_B"] = { intent: "Vanguard Core 2", numbers: buildPanel([anchors[0], anchors[1], anchors[3], variance[1], variance[2]]) };
     playslipPortfolio["Panel_C"] = { intent: "Vanguard Variant 1", numbers: buildPanel([anchors[1], anchors[2], anchors[3], variance[2], variance[3]]) };
@@ -233,7 +224,6 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     playslipPortfolio["Panel_E"] = { intent: "Combinatorial Net (Anchor/Var)", numbers: buildPanel([anchors[0], anchors[1], variance[0], variance[3], variance[4]]) };
     playslipPortfolio["Panel_F"] = { intent: "Combinatorial Net (Anchor/Var)", numbers: buildPanel([anchors[2], anchors[3], variance[1], variance[2], variance[4]]) };
 
-    // PANELS G-J: THE KDD WILDCARDS 
     playslipPortfolio["Panel_G"] = { intent: "KDD Delta Miner (Wildcard Net 1)", numbers: buildPanel([wildcards[0], wildcards[1], wildcards[2], wildcards[3], wildcards[4]]) };
     playslipPortfolio["Panel_H"] = { intent: "KDD Delta Miner (Wildcard Net 2)", numbers: buildPanel([wildcards[5], wildcards[6], wildcards[7], wildcards[8], wildcards[9]]) };
     playslipPortfolio["Panel_I"] = { intent: "KDD Delta Miner (Wildcard Net 3)", numbers: buildPanel([wildcards[10], wildcards[11], wildcards[12], wildcards[13], wildcards[14]]) };
@@ -246,7 +236,7 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
     const pendingHash = generatePortfolioHash(playslipPortfolio);
 
     const finalPayload = {
-        schema_version: "PHASE_4.7_AUTONOMOUS_KDD",
+        schema_version: "PHASE_5_MACRO_KDD",
         experiment_chronology: {
             cycle_id: pendingHash,
             run_timestamp: new Date().toISOString(),
@@ -255,46 +245,56 @@ async function executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, hi
             output_classification: "LIVE_FORWARD_TEST",
             official_result_known_at_generation: false
         },
-        rulebook_compliance: {
-            target_objective: "5-of-5_SINGLE_ROW",
-            exactly_five_numbers: true,
-            ten_panel_limit_enforced: true
-        },
+        rulebook_compliance: { target_objective: "5-of-5_SINGLE_ROW", exactly_five_numbers: true, ten_panel_limit_enforced: true },
         retro_ledger: retroLedger,
         entity_ledger: entityLedger,
         miner_workspaces: activeMiners,
         playslip_portfolio: playslipPortfolio,
         daily_standup: {
             status: "DEBATE_CONCLUDED",
-            action_item: `Phase 4.7 Autonomous arrays active. Dual-Stream locked for ${targetDrawType}. KDD Shift: ${kddShift}.`
+            action_item: `Phase 5 Stratified Macro Engine Active. Dual-Epoch scan depth [${historicalDraws.length}] executed.`
         }
     };
 
-    console.log(`💾 Injecting Phase 4.7 Payload to Supabase 'daily_mesh_state'. Pending Hash: ${pendingHash}`);
-    const { error: insertError } = await supabase.from('daily_mesh_state').insert([{ cycle_id: pendingHash, state_payload: finalPayload }]);
-
-    if (insertError) console.error("❌ Supabase Save Error:", insertError);
-    else console.log("✅ Phase 4.7 Payload successfully written. Engine is fully autonomous.");
+    console.log(`💾 Writing Phase 5 Dynamic Payload to Supabase. Hash: ${pendingHash}`);
+    await supabase.from('daily_mesh_state').insert([{ cycle_id: pendingHash, state_payload: finalPayload }]);
+    console.log("✅ Phase 5 Hard Reset finalized successfully.");
 }
 
+// ============================================================================
+// AUTOMATED EXECUTION: DUAL-EPOCH STRATIFIED FETCH
+// ============================================================================
 async function runAutomatedEngine() {
     const currentHour = new Date().getHours();
     const targetDrawType = currentHour < 15 ? "MIDDAY" : "EVENING"; 
     
-    // 1. Fetch historical data for dynamic ML calculations
-    const { data: historyRows, error: histError } = await supabase
+    console.log(`📡 Querying Supabase for Dual-Epoch Stratified Training Array...`);
+    
+    // 1. Fetch Epoch 1: The Modern Physics (Last 500 Draws)
+    const { data: recentRows, error: err1 } = await supabase
         .from('f5_draws') 
         .select('*')
         .eq('Draw Type', targetDrawType) 
         .order('id', { ascending: false })
-        .limit(30); // Pull last 30 draws for frequency math
+        .limit(500); 
 
-    if (histError || !historyRows || historyRows.length === 0) {
-        console.error("❌ Fatal Error: Failed to fetch historical draws.");
+    // 2. Fetch Epoch 2: The Deep Archive (500 Draws from exactly a decade/cycle ago)
+    const { data: deepRows, error: err2 } = await supabase
+        .from('f5_draws') 
+        .select('*')
+        .eq('Draw Type', targetDrawType) 
+        .order('id', { ascending: false })
+        .range(5000, 5499); 
+
+    if (err1 || err2 || !recentRows || recentRows.length === 0) {
+        console.error("❌ Fatal Error: Dual-Epoch ingestion pool failed.");
         process.exit(1);
     }
 
-    const latestRow = historyRows[0];
+    // Combine both epochs to create a 1,000-draw stratified sample
+    const historyRows = [...recentRows, ...(deepRows || [])];
+
+    const latestRow = recentRows[0];
     const latestOfficialDraw = [
         latestRow['Winning Number 1'], latestRow['Winning Number 2'], 
         latestRow['Winning Number 3'], latestRow['Winning Number 4'], 
@@ -306,12 +306,12 @@ async function runAutomatedEngine() {
         row['Winning Number 3'], row['Winning Number 4'], row['Winning Number 5']
     ]);
 
-    await executePhase4_7_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws);
+    await executePhase5_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws);
 }
 
 runAutomatedEngine()
     .then(() => process.exit(0))
     .catch(err => {
-        console.error("FATAL ENGINE CRASH:", err);
+        console.error("FATAL INSTABILITY:", err);
         process.exit(1);
     });
