@@ -9,7 +9,7 @@ on:
 jobs:
   execute-mesh:
     runs-on: ubuntu-latest
-    timeout-minutes: 5 # BEST PRACTICE: Hard ceiling to protect free-tier limits
+    timeout-minutes: 5
     
     steps:
     - name: Checkout Repository
@@ -20,11 +20,14 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Initialize & Install
+    - name: Initialize & Install Dependencies
       run: |
         npm init -y
         npm install @supabase/supabase-js ws
 
-    - name: Run Hive Engine
+    - name: Execute Tri-Engine Compiler
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       run: node --dns-result-order=ipv4first hive_engine.js
       
