@@ -1,9 +1,6 @@
 name: Neural Mesh Hive Mind
 
 on:
-  schedule:
-    - cron: '30 17 * * *'
-    - cron: '30 3 * * *'
   workflow_dispatch: 
 
 jobs:
@@ -26,8 +23,5 @@ jobs:
         npm install @supabase/supabase-js ws
 
     - name: Execute Tri-Engine Compiler
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       run: node --dns-result-order=ipv4first hive_engine.js
       
