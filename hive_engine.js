@@ -354,7 +354,7 @@ async function runAutomatedEngine() {
         process.exit(1);
     }
 
-    // FETCH 2: Deep Archive Rotation for vast Image Memory
+     // FETCH 2: Deep Archive Rotation for vast Image Memory
     const currentDay = new Date().getDate();
     const currentMinute = new Date().getMinutes();
     const orbitOffset = 1500 + ((currentDay * currentMinute) % 3000); 
@@ -371,4 +371,25 @@ async function runAutomatedEngine() {
     const extractPhysicalSequence = (row) => {
         return [
             parseInt(row['Winning Number 1'], 10), 
-            parseInt(row['Winning Number 2'],
+            parseInt(row['Winning Number 2'], 10), 
+            parseInt(row['Winning Number 3'], 10), 
+            parseInt(row['Winning Number 4'], 10), 
+            parseInt(row['Winning Number 5'], 10)
+        ];
+    };
+
+    const recentDrawsRaw = recentRows.map(extractPhysicalSequence);
+    const deepDrawsRaw = finalDeepRows.map(extractPhysicalSequence);
+    const allRaw = recentDrawsRaw.concat(deepDrawsRaw);
+    
+    const latestOfficialDraw = allRaw[0];
+
+    await executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, allRaw, flTimeString, orbitOffset);
+}
+
+runAutomatedEngine()
+    .then(() => process.exit(0))
+    .catch(err => {
+        console.error("FATAL INSTABILITY:", err);
+        process.exit(1);
+    });
