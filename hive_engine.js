@@ -1,6 +1,7 @@
+// --- START OF CODE ---
 // ============================================================================
-// NEURAL HIVE MIND - PHASE 7.0: APEX CEILING MATRIX & KNN IMAGE MEMORY
-// (8/2 BIPARTITE TRAP, TRUE TUMBLER ENTROPY, FLUID WEIGHTS, ZERO STATIC LIMITS)
+// NEURAL HIVE MIND - PHASE 7.1: APEX CEILING MATRIX & KNN IMAGE MEMORY
+// (8/2 BIPARTITE TRAP, TRUE TUMBLER ENTROPY, WILDCARD PATCHED, STABLE)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
@@ -30,14 +31,14 @@ function buildPanel(numbersArray, dynamicFallbackPool) {
         if (unique.indexOf(fb) === -1) unique.push(fb);
         fallbackIndex++;
     }
-    return unique.slice(0, 5).sort((a, b) => a - b); // Sorted only for UI readability
+    return unique.slice(0, 5).sort((a, b) => a - b);
 }
 
 // ============================================================================
-// CORE ENGINE LOGIC: PHASE 7.0
+// CORE ENGINE LOGIC: PHASE 7.1
 // ============================================================================
-async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws, flTimeString, orbitOffset) {
-    console.log(`🚀 INITIATING PHASE 7.0: APEX CEILING & KNN IMAGE MEMORY`);
+async function executePhase7_1_HiveEngine(latestOfficialDraw, targetDrawType, historicalDraws, flTimeString, orbitOffset) {
+    console.log(`🚀 INITIATING PHASE 7.1: APEX CEILING & KNN IMAGE MEMORY`);
     console.log(`📌 Florida Time Verified: [${flTimeString}] | Target Draw Locked: [${targetDrawType}]`);
     console.log(`📌 KNN Active Memory Pool: [${historicalDraws.length}] Draws Loaded.`);
 
@@ -47,13 +48,11 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     // ========================================================================
     // 1. KNN IMAGE MEMORY (PATTERN MATCHER)
     // ========================================================================
-    // Scans the massive history for thermodynamic 'Twins' and extracts the draws that followed them.
     let knnFollowerFreq = {};
     for (let i = 1; i < historicalDraws.length; i++) {
         let pastSum = historicalDraws[i].reduce((a, b) => a + b, 0);
-        // If historical draw was within 3 points of current sum (Thermodynamic Twin)
         if (Math.abs(pastSum - currentDrawSum) <= 3) {
-            let subsequentDraw = historicalDraws[i - 1]; // Index i-1 is the draw chronologically NEXT
+            let subsequentDraw = historicalDraws[i - 1]; 
             subsequentDraw.forEach(num => {
                 knnFollowerFreq[num] = (knnFollowerFreq[num] || 0) + 1;
             });
@@ -108,7 +107,7 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     const hackerSignals = Array.from(new Set(coldPairSim)).slice(0, 5);
 
     // ========================================================================
-    // 3. DYNAMIC KDD THERMODYNAMICS (True Standard Deviation)
+    // 3. DYNAMIC KDD THERMODYNAMICS
     // ========================================================================
     let allSums = historicalDraws.map(d => d.reduce((a, b) => a + b, 0));
     let meanSum = allSums.reduce((a, b) => a + b, 0) / allSums.length;
@@ -142,7 +141,7 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     if (kddSignals.length < 5) kddSignals = [12, 15, 18, 21, 24]; 
 
     // ========================================================================
-    // 4. RETRO EVIDENCE GRADING (DNA LOCK ENFORCED)
+    // 4. RETRO EVIDENCE GRADING (DNA LOCK)
     // ========================================================================
     const { data: previousRuns } = await supabase.from('daily_mesh_state').select('*').order('created_at', { ascending: false }).limit(15);
 
@@ -259,19 +258,23 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     });
 
     // ========================================================================
-    // 6. THE 8/2 APEX CEILING MATRIX (The Combinatorial Trap)
+    // 6. THE 8/2 APEX CEILING MATRIX (The Patched Combinatorial Trap)
     // ========================================================================
     const sortedCore = Object.values(entityLedger).filter(e => e.entity_score > 0).sort((a,b) => b.entity_score - a.entity_score);
     const sortedWildcards = Object.values(entityLedger).filter(e => e.entity_score <= 0.1).sort(() => 0.5 - Math.random()); 
 
-    // Extract exactly 7 Apex Numbers for the high-density overlapping wheel
-    const apex7 = sortedCore.slice(0, 7).map(e => e.number); 
-    const fullDynamicRoster = sortedCore.map(e => e.number).concat(wildcards.map(e => e.number));
+    // BUGFIX: Explicitly map wildcards to prevent ReferenceError
+    const wildcards = sortedWildcards.map(e => e.number);
+    let apex7 = sortedCore.slice(0, 7).map(e => e.number); 
+    
+    // Safety check: ensure apex7 has exactly 7 elements
+    while(apex7.length < 7 && wildcards.length > 0) {
+        apex7.push(wildcards.shift());
+    }
 
+    const fullDynamicRoster = sortedCore.map(e => e.number).concat(wildcards);
     let playslipPortfolio = {};
 
-    // ZONE 1: 8-Panel Apex Ceiling (Aggressive 4-of-5 & 5-of-5 Hunting)
-    // This covering design physically locks 7 numbers across 8 panels to force massive overlap.
     playslipPortfolio["Panel_A"] = { intent: "Apex Matrix (A-B-C-D-E)", numbers: buildPanel([apex7[0], apex7[1], apex7[2], apex7[3], apex7[4]], fullDynamicRoster) };
     playslipPortfolio["Panel_B"] = { intent: "Apex Matrix (A-B-C-F-G)", numbers: buildPanel([apex7[0], apex7[1], apex7[2], apex7[5], apex7[6]], fullDynamicRoster) };
     playslipPortfolio["Panel_C"] = { intent: "Apex Matrix (A-D-E-F-G)", numbers: buildPanel([apex7[0], apex7[3], apex7[4], apex7[5], apex7[6]], fullDynamicRoster) };
@@ -281,7 +284,6 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     playslipPortfolio["Panel_G"] = { intent: "Apex Matrix (B-D-E-F-G)", numbers: buildPanel([apex7[1], apex7[3], apex7[4], apex7[5], apex7[6]], fullDynamicRoster) };
     playslipPortfolio["Panel_H"] = { intent: "Apex Matrix (C-D-E-F-G)", numbers: buildPanel([apex7[2], apex7[3], apex7[4], apex7[5], apex7[6]], fullDynamicRoster) };
 
-    // ZONE 2: 2-Panel Variance Safety Net (Baseline Defense)
     let safe1 = [wildcards[0], wildcards[1], wildcards[2], apex7[6], parseInt(sortedGlobal[0][0], 10)];
     let safe2 = [wildcards[3], wildcards[4], wildcards[5], apex7[5], parseInt(sortedGlobal[sortedGlobal.length-1][0], 10)];
     playslipPortfolio["Panel_I"] = { intent: "Variance Parachute 1", numbers: buildPanel(safe1, fullDynamicRoster) };
@@ -290,7 +292,7 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
     const pendingHash = generatePortfolioHash(playslipPortfolio);
 
     const finalPayload = {
-        schema_version: "PHASE_7.0_APEX_CEILING",
+        schema_version: "PHASE_7.1_APEX_CEILING",
         experiment_chronology: {
             cycle_id: pendingHash,
             run_timestamp: new Date().toISOString(),
@@ -313,13 +315,13 @@ async function executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, hist
         playslip_portfolio: playslipPortfolio,
         daily_standup: {
             status: retroLedger.status === "AWAITING_NEW_DATA" ? "MEMORY_SUSPENDED" : "DEBATE_CONCLUDED",
-            action_item: `Phase 7 Deployed. KNN Memory Active. 8/2 Matrix Locked on Top 7 Entities.`
+            action_item: `Phase 7.1 Deployed. KNN Memory Active. 8/2 Matrix Locked on Top 7 Entities.`
         }
     };
 
-    console.log(`💾 Writing Phase 7.0 Payload to Supabase. Hash: ${pendingHash}`);
+    console.log(`💾 Writing Phase 7.1 Payload to Supabase. Hash: ${pendingHash}`);
     await supabase.from('daily_mesh_state').insert([{ cycle_id: pendingHash, state_payload: finalPayload }]);
-    console.log("✅ Phase 7 Architecture Deployed successfully.");
+    console.log("✅ Phase 7.1 Architecture Deployed successfully.");
 }
 
 // ============================================================================
@@ -341,7 +343,6 @@ async function runAutomatedEngine() {
 
     console.log(`📡 Fetching Active Matrix (Recent 1500) and Deep Archive (Deep 1500) for KNN...`);
     
-    // FETCH 1: Recent Physics
     const { data: recentRows, error: err1 } = await supabase
         .from('f5_draws') 
         .select('*')
@@ -354,7 +355,6 @@ async function runAutomatedEngine() {
         process.exit(1);
     }
 
-     // FETCH 2: Deep Archive Rotation for vast Image Memory
     const currentDay = new Date().getDate();
     const currentMinute = new Date().getMinutes();
     const orbitOffset = 1500 + ((currentDay * currentMinute) % 3000); 
@@ -384,7 +384,7 @@ async function runAutomatedEngine() {
     
     const latestOfficialDraw = allRaw[0];
 
-    await executePhase7_HiveEngine(latestOfficialDraw, targetDrawType, allRaw, flTimeString, orbitOffset);
+    await executePhase7_1_HiveEngine(latestOfficialDraw, targetDrawType, allRaw, flTimeString, orbitOffset);
 }
 
 runAutomatedEngine()
@@ -393,3 +393,4 @@ runAutomatedEngine()
         console.error("FATAL INSTABILITY:", err);
         process.exit(1);
     });
+// --- END OF CODE ---
