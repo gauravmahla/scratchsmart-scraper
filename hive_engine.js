@@ -1,15 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
-import * as fs from 'fs';
+const { createClient } = require('@supabase/supabase-js');
 
 // 1. CONFIGURATION
-const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
+// CRITICAL: You must paste your actual Supabase URL and Anon Key inside these quotes.
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function executeMesh() {
     console.log("INITIALIZING PHASE 10.4 KDD APEX ENGINE...");
 
-    // 2. ORGANIC DATA INGESTION (Strict ID Descending Limit 1)
+    // 2. ORGANIC DATA INGESTION
     const { data: p5Data, error: p5Err } = await supabase
         .from('p5_live_entry')
         .select('*')
@@ -22,8 +22,12 @@ async function executeMesh() {
         .order('id', { ascending: false })
         .limit(1);
 
-    if (p5Err || f5Err || !p5Data.length || !f5Data.length) {
-        console.error("FATAL DATABASE FETCH ERROR. Check schema or connection.");
+    // TELEMETRY: Print exact errors if Supabase rejects us
+    if (p5Err) console.error("SUPABASE P5 REJECTION:", JSON.stringify(p5Err));
+    if (f5Err) console.error("SUPABASE F5 REJECTION:", JSON.stringify(f5Err));
+
+    if (p5Err || f5Err || !p5Data || !f5Data || p5Data.length === 0 || f5Data.length === 0) {
+        console.error("FATAL: Cannot fetch latest draw. Did you paste your URL and KEY?");
         process.exit(1);
     }
 
@@ -31,6 +35,7 @@ async function executeMesh() {
     const latestF5 = f5Data[0];
     const p5BaseDraw = [latestP5.num1, latestP5.num2, latestP5.num3, latestP5.num4, latestP5.num5];
     const f5BaseDraw = [latestF5.num1, latestF5.num2, latestF5.num3, latestF5.num4, latestF5.num5];
+
         // 3. ENGINE 2: PICK 5 (LOCKED DECAY LOGIC)
     function generateP5Locked(baseDraw, fireball) {
         let panels = [];
