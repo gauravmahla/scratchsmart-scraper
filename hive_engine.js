@@ -74,8 +74,10 @@ async function executeMesh() {
     const pick5Obj = {}; p5Panels.forEach((p, i) => pick5Obj[pNames[i]] = p);
     const fantasy5Obj = {}; f5Panels.forEach((p, i) => fantasy5Obj[pNames[i]] = p);
 
+        const currentCycleId = `CYC-${Date.now()}`;
+
     const payload = {
-        cycle_id: `HASH-${Math.random().toString(16).substring(2, 10).toUpperCase()}`,
+        cycle_id: currentCycleId,
         portfolios: {
             PICK_5: {
                 panels: pick5Obj,
@@ -92,7 +94,7 @@ async function executeMesh() {
         },
         daily_standup: {
             status: "PHASE_10.4_APEX_ENGAGED",
-            action_item: "Database push successful."
+            action_item: "Database push successful. Schema matched."
         },
         execution_timestamp: new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
     };
@@ -100,11 +102,13 @@ async function executeMesh() {
     console.log("=== PAYLOAD GENERATED ===");
     console.log(JSON.stringify(payload, null, 2));
 
-    // 6. DATABASE WRITE (Pushing to daily_mesh_state)
-    // Assuming your column holding the JSON is named 'payload'. If it is named 'json_data' or something else, update the key below.
+    // 6. DATABASE WRITE (SCHEMA EXACT MATCH)
     const { error: insertErr } = await supabase
         .from('daily_mesh_state')
-        .insert([{ payload: payload }]); // <-- Update 'payload' if your column name is different
+        .insert([{ 
+            cycle_id: currentCycleId,
+            state_payload: payload 
+        }]); 
 
     if (insertErr) {
         console.error("FAILED TO WRITE TO DAILY_MESH_STATE:", insertErr);
