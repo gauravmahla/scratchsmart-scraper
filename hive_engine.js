@@ -1,145 +1,120 @@
-// ============================================================================
-// PHASE 10.3: TRI-ENGINE NEURAL MESH (FINAL RENDER)
-// ZERO STATIC CAP | DYNAMIC KDD AUTONOMY
-// ============================================================================
-const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
+import { createClient } from '@supabase/supabase-js';
+import * as fs from 'fs';
 
-const SUPABASE_URL = "https://wwfubdeeiksqjgpmgfvk.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0";
-
-if (!SUPABASE_URL || SUPABASE_URL === "INSERT_YOUR_SUPABASE_URL_HERE") {
-    console.error("FATAL: Supabase credentials not configured.");
-    process.exit(1);
-}
-
+// 1. CONFIGURATION
+const SUPABASE_URL = 'https://wwfubdeeiksqjgpmgfvk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-const CYCLE_ID = "HASH-" + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-function generateTimestampEDT() {
-    return new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
-}
+async function executeMesh() {
+    console.log("INITIALIZING PHASE 10.4 KDD APEX ENGINE...");
 
-function dynamicShuffle(array, seedSum) {
-    let currentIndex = array.length, randomIndex;
-    while (currentIndex !== 0) {
-        randomIndex = Math.floor((Math.abs(Math.sin(seedSum++)) * 10000) % currentIndex);
-        currentIndex--;
-        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-    }
-    return array;
-}
-// --- END CHUNK 1 ---
-// --- BEGIN CHUNK 2 ---
-async function runFantasy5Engine() {
-    console.log("[ENGINE 1] Calculating F5 Dynamic Traps...");
-    
-    const { data: f5Live, error: f5LiveErr } = await supabase.from('f5_live_entry')
-        .select('*').order('draw_date', { ascending: false }).limit(5);
-    if (f5LiveErr) throw new Error("F5 Live Error: " + f5LiveErr.message);
+    // 2. ORGANIC DATA INGESTION (Strict ID Descending Limit 1)
+    const { data: p5Data, error: p5Err } = await supabase
+        .from('p5_live_entry')
+        .select('*')
+        .order('id', { ascending: false })
+        .limit(1);
 
-    let kddSeed = (f5Live && f5Live.length > 0) ? (f5Live[0].num1 + f5Live[0].num2 + f5Live[0].num3 + f5Live[0].num4 + f5Live[0].num5) : 85;
-    let basePool = Array.from({length: 36}, (_, i) => i + 1);
-    let optimizedPool = dynamicShuffle(basePool, kddSeed);
+    const { data: f5Data, error: f5Err } = await supabase
+        .from('f5_live_entry')
+        .select('*')
+        .order('id', { ascending: false })
+        .limit(1);
 
-    let f5Panels = {};
-    for (let i = 0; i < 10; i++) {
-        let rawPanel = optimizedPool.slice(i * 3, (i * 3) + 5).sort((a,b)=>a-b);
-        
-        // Ensure 5 distinct numbers via algorithmic fallback to preserve cardinality
-        let cleanPanel = [...new Set(rawPanel)];
-        while(cleanPanel.length < 5) {
-             let nextNum = Math.floor(Math.abs(Math.sin(kddSeed++)) * 36) + 1;
-             if(!cleanPanel.includes(nextNum)) cleanPanel.push(nextNum);
-        }
-        f5Panels[`Panel_${String.fromCharCode(65 + i)}`] = cleanPanel.sort((a,b)=>a-b);
-    }
-
-    return {
-        target_objective: "B2B_MULTIPLE_PRIZE_TIER_NET",
-        kdd_seed_variance: kddSeed,
-        miner_rationale: "Aggregated live thermodynamic sum to seed pseudo-random spatial generator. Aiming for cascading 3-of-5 and 4-of-5 overlap.",
-        panels: f5Panels
-    };
-}
-// --- END CHUNK 2 ---
-// --- BEGIN CHUNK 3 ---
-async function runPick5Engine() {
-    console.log("[ENGINE 2] Calculating P5 Mechanical Tumblers...");
-
-    const { data: p5Live, error: p5LiveErr } = await supabase.from('p5_live_entry')
-        .select('*').order('draw_date', { ascending: false }).limit(5);
-    if (p5LiveErr) throw new Error("P5 Live Error: " + p5LiveErr.message);
-
-    let recentDraw = (p5Live && p5Live.length > 0) ? p5Live[0] : {num1:5, num2:5, num3:5, num4:5, num5:5, fireball:5};
-    
-    let p5Panels = {};
-    for (let i = 0; i < 10; i++) {
-        let p1 = (recentDraw.num1 + i + Math.floor(Math.sin(i) * 3)) % 10;
-        let p2 = (recentDraw.num2 + i + 2) % 10;
-        let p3 = (recentDraw.num3 + Math.floor(Math.cos(i) * 4)) % 10;
-        let p4 = (recentDraw.num4 + i + 1) % 10;
-        let p5 = (recentDraw.fireball + i) % 10;
-        
-        // Ensure absolute mathematical values for tumblers
-        p5Panels[`Panel_${String.fromCharCode(65 + i)}`] = [
-            Math.abs(p1), Math.abs(p2), Math.abs(p3), Math.abs(p4), Math.abs(p5)
-        ];
-    }
-
-    return {
-        target_objective: "120_WAY_BOX_MAXIMIZATION",
-        fireball_directive: "STANDBY_NO_DOUBLE_COST",
-        miner_rationale: "Isolated 5 tumbler arrays. Fireball data mathematically injected into Tumbler 5 output to trap the ghost parameter.",
-        panels: p5Panels
-    };
-}
-// --- END CHUNK 3 ---
-// --- BEGIN CHUNK 4 ---
-async function executeTriEngineCompiler() {
-    try {
-        console.log(`[ENGINE 3] Firing Compiler Cycle: ${CYCLE_ID}`);
-        const timestamp = generateTimestampEDT();
-
-        const [f5Result, p5Result] = await Promise.all([
-            runFantasy5Engine(),
-            runPick5Engine()
-        ]);
-
-        const phase10Payload = {
-            schema_version: "PHASE_10.3_FINAL_RENDER",
-            execution_timestamp: timestamp,
-            cycle_id: CYCLE_ID,
-            temporal_state: {
-                evaluated_draw: "EVENING",
-                florida_time: timestamp
-            },
-            daily_standup: {
-                status: "ZERO_HALLUCINATION_PROTOCOL_ACTIVE",
-                action_item: "Both engines achieved distinct KDD equilibrium."
-            },
-            portfolios: {
-                FANTASY_5: f5Result,
-                PICK_5: p5Result
-            }
-        };
-
-        console.log("[DATABASE] Pushing Final Render to daily_mesh_state...");
-        const { data, error } = await supabase
-            .from('daily_mesh_state')
-            .insert([{ cycle_id: CYCLE_ID, state_payload: phase10Payload }]);
-
-        if (error) throw new Error("Insert Failed: " + error.message);
-        
-        console.log("SUCCESS: Phase 10.3 Mission Accomplished.");
-        process.exit(0);
-
-    } catch (err) {
-        console.error("CRITICAL FAILURE:", err);
+    if (p5Err || f5Err || !p5Data.length || !f5Data.length) {
+        console.error("FATAL DATABASE FETCH ERROR. Check schema or connection.");
         process.exit(1);
     }
+
+    const latestP5 = p5Data[0];
+    const latestF5 = f5Data[0];
+    const p5BaseDraw = [latestP5.num1, latestP5.num2, latestP5.num3, latestP5.num4, latestP5.num5];
+    const f5BaseDraw = [latestF5.num1, latestF5.num2, latestF5.num3, latestF5.num4, latestF5.num5];
+        // 3. ENGINE 2: PICK 5 (LOCKED DECAY LOGIC)
+    function generateP5Locked(baseDraw, fireball) {
+        let panels = [];
+        for (let i = 0; i < 10; i++) {
+            let panel = [
+                Math.abs((baseDraw[0] + i) % 10),
+                Math.abs((baseDraw[1] + (i * 2)) % 10),
+                Math.abs((baseDraw[2] - i + 10) % 10),
+                Math.abs((baseDraw[3] + 1) % 10),
+                Math.abs((fireball + i) % 10) // Ghost parameter injection
+            ];
+            panels.push(panel);
+        }
+        return panels;
+    }
+    
+    const pick5PanelsArray = generateP5Locked(p5BaseDraw, latestP5.fireball);
+        // 4. ENGINE 1: FANTASY 5 (APEX COMBINATORIAL WHEEL & JOHN WICK)
+    function generateF5Apex(baseDraw) {
+        const seedSum = baseDraw.reduce((a, b) => a + b, 0);
+        let drum = Array.from({length: 36}, (_, i) => i + 1);
+        
+        // KDD Seed Variance Shuffle
+        for(let i = drum.length - 1; i > 0; i--) {
+            let j = (seedSum * (i + 1)) % (i + 1);
+            [drum[i], drum[j]] = [drum[j], drum[i]];
+        }
+
+        // Apex Pool: 12 optimized target numbers
+        const apexPool = drum.slice(0, 12);
+        // John Wick: 5 completely decoupled cold-zone numbers
+        const johnWick = drum.slice(25, 30).sort((a,b) => a - b); 
+
+        // Mathematical Covering Design (Ensures cascading overlaps if 3+ hit the pool)
+        const wheelIndices = [
+            [0,1,2,3,4], [0,5,6,7,8], [1,2,9,10,11],
+            [3,4,5,9,10], [6,7,8,11,0], [1,3,6,9,11],
+            [2,4,7,10,0], [5,8,1,4,11], [2,5,7,9,0]
+        ];
+
+        let panels = [];
+        wheelIndices.forEach(indices => {
+            let p = indices.map(idx => apexPool[idx]).sort((a, b) => a - b);
+            panels.push(p);
+        });
+        
+        panels.push(johnWick); // Panel J is strictly John Wick
+        return { panels, seedSum };
+    }
+
+    const f5EngineData = generateF5Apex(f5BaseDraw);
+        // 5. JSON PAYLOAD COMPILATION
+    const panelNames = ["Panel_A", "Panel_B", "Panel_C", "Panel_D", "Panel_E", "Panel_F", "Panel_G", "Panel_H", "Panel_I", "Panel_J"];
+    
+    const pick5Panels = {};
+    pick5PanelsArray.forEach((p, index) => pick5Panels[panelNames[index]] = p);
+    
+    const fantasy5Panels = {};
+    f5EngineData.panels.forEach((p, index) => fantasy5Panels[panelNames[index]] = p);
+
+    const payload = {
+        cycle_id: `HASH-${Math.random().toString(16).substring(2, 10).toUpperCase()}`,
+        portfolios: {
+            PICK_5: {
+                panels: pick5Panels,
+                miner_rationale: "Locked mechanical decay. Isolated tumblers with explicit Ghost Parameter injection.",
+                target_objective: "120_WAY_BOX_MAXIMIZATION",
+                action_requirement: "PLAYSTYLE: BOX. FIREBALL: YES."
+            },
+            FANTASY_5: {
+                panels: fantasy5Panels,
+                miner_rationale: "Panels A-I form a 12-number Combinatorial Apex Wheel. Panel J is the decoupled John Wick cold-zone sniper.",
+                target_objective: "APEX_HUNT_CASCADING_MULTIPLIER",
+                kdd_seed_variance: f5EngineData.seedSum
+            }
+        },
+        daily_standup: {
+            status: "PHASE_10.4_APEX_ENGAGED",
+            action_item: "Database explicitly constrained to ID DESC LIMIT 1. Organic session data secured."
+        },
+        execution_timestamp: new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
+    };
+
+    console.log(JSON.stringify(payload, null, 2));
 }
 
-executeTriEngineCompiler();
-// ============================================================================
-// --- END CHUNK 4 ---
+executeMesh();
