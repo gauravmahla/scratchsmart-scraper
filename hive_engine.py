@@ -5,21 +5,25 @@ from datetime import datetime
 from supabase import create_client, Client
 
 # ==========================================
-# 1. SUPABASE SECURE CONNECTION
+# 1. SUPABASE SECURE CONNECTION (BULLETPROOF)
 # ==========================================
-url: str = os.environ.get("https://wwfubdeeiksqjgpmgfvk.supabase.co")
-key: str = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZnViZGVlaWtzcWpncG1nZnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTgwOTQsImV4cCI6MjA5ODY3NDA5NH0.JoDaG5AgmbilsXQDNCFapogYeTOUwGPiN19C66vyoK0")
+print("Initiating Phase 11 Crystallized Intelligence...")
+
+# Strip all hidden spaces/artifacts from mobile copy-pasting
+clean_env = {str(k).strip(): str(v).strip() for k, v in os.environ.items()}
+
+url = clean_env.get("SUPABASE_URL")
+key = clean_env.get("SUPABASE_KEY")
 
 if not url or not key:
-    raise ValueError("CRITICAL FAILURE: Supabase environment variables missing.")
+    print(f"DEBUG - Found Keys: {[k for k in clean_env.keys() if 'SUPA' in k]}")
+    raise ValueError("CRITICAL FAILURE: Supabase variables missing. Check debug log above.")
 
 supabase: Client = create_client(url, key)
 
 # ==========================================
 # 2. DATA INGESTION (THE T+1 OVERLAY)
 # ==========================================
-print("Initiating Phase 11 Crystallized Intelligence...")
-
 # Fetch the absolute latest Live Entries (The Physical Reality)
 f5_live_response = supabase.table("f5_live_entry").select("*").order("id", desc=True).limit(1).execute()
 p5_live_response = supabase.table("p5_live_entry").select("*").order("id", desc=True).limit(1).execute()
@@ -36,6 +40,7 @@ cycle_timestamp = int(time.time() * 1000)
 cycle_id = f"CYC-PHASE11-{cycle_timestamp}"
 
 print(f"Data ingested. Analyzing F5 Macro Ledger status: {f5_macro}")
+
 # ==========================================
 # 3. PICK 5 LOGIC: THE 120-WAY STEALTH TRAP
 # ==========================================
