@@ -100,7 +100,7 @@ def execute_f5_traps(f5_df):
     np.random.seed(int(datetime.now().timestamp()) % 100000)
     
     def synthesize_ml_panel():
-        sorted_pairs = sorted(concurrency_map.items(), key=lambda item: item, reverse=True)
+        sorted_pairs = sorted(concurrency_map.items(), key=lambda item: item[1], reverse=True)
         top_pairs = [pair for pair, count in sorted_pairs[:15]]
         selected_pair = top_pairs[np.random.choice(len(top_pairs))]
         
@@ -148,25 +148,25 @@ def execute_p5_traps(p5_df):
     num_cols = ['num1', 'num2', 'num3', 'num4', 'num5']
     historical_matrix = p5_df[num_cols].dropna().values.astype(int)
     
-                mutated_array = []
-                for col_idx, col_name in enumerate(num_cols):
-                    slot_vector = historical_matrix[:, col_idx]
-                    
-                    transition_density = {}
-                    for past_state, current_state in zip(slot_vector[1:], slot_vector[:-1]):
-                        if past_state not in transition_density:
-                            transition_density[past_state] = []
-                        transition_density[past_state].append(current_state)
-                        
-                    latest_historical_anchor = slot_vector[0]
-                    
-                    if latest_historical_anchor in transition_density and len(transition_density[latest_historical_anchor]) > 0:
-                        sample_pool = transition_density[latest_historical_anchor]
-                        predicted_digit = int(np.random.choice(sample_pool))
-                    else:
-                        predicted_digit = int(np.random.choice(slot_vector))
-                        
-                    mutated_array.append(predicted_digit)
+    mutated_array = []
+    for col_idx, col_name in enumerate(num_cols):
+        slot_vector = historical_matrix[:, col_idx]
+        
+        transition_density = {}
+        for past_state, current_state in zip(slot_vector[1:], slot_vector[:-1]):
+            if past_state not in transition_density:
+                transition_density[past_state] = []
+            transition_density[past_state].append(current_state)
+            
+        latest_historical_anchor = slot_vector[0]
+        
+        if latest_historical_anchor in transition_density and len(transition_density[latest_historical_anchor]) > 0:
+            sample_pool = transition_density[latest_historical_anchor]
+            predicted_digit = int(np.random.choice(sample_pool))
+        else:
+            predicted_digit = int(np.random.choice(slot_vector))
+            
+        mutated_array.append(predicted_digit)
 
     if not mutated_array:
         mutated_array = [int(x) for x in historical_matrix[0]]
@@ -180,10 +180,10 @@ def execute_p5_traps(p5_df):
     elif distinct_token_count == 4:
         derived_play_type, risk_profile, variance_flag = "60-WAY BOX", "MEDIUM VARIANCE", "STABILIZED"
     elif distinct_token_count == 3:
-        derived_play_type = "20-WAY BOX" if frequency_distribution == [3, 1, 1] else "30-WAY BOX"
+        derived_play_type = "20-WAY BOX" if frequency_distribution[0] == 3 else "30-WAY BOX"
         risk_profile, variance_flag = "HIGH VARIANCE", "FLAGGED"
     elif distinct_token_count == 2:
-        derived_play_type = "5-WAY BOX" if frequency_distribution == [4, 1] else "10-WAY BOX"
+        derived_play_type = "5-WAY BOX" if frequency_distribution[0] == 4 else "10-WAY BOX"
         risk_profile, variance_flag = "CRITICAL VARIANCE", "QUARANTINED"
     else:
         derived_play_type, risk_profile, variance_flag = "STRAIGHT MATCH ONLY", "MAX VALUE", "QUARANTINED"
@@ -218,3 +218,11 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     est_tz = ZoneInfo('US/Eastern')
     current_time_est = datetime.now(est_tz)
     current_time_utc = current_time_est.astimezone(ZoneInfo('UTC'))
+    cycle_id = f"CYC-PH12-{int(current_time_est.timestamp())}"
+    
+    computed_quarantine = p5_intelligence.get("risk_quarantine_status", "CLEARED")
+    
+    payload = {
+        "mission_control": {
+            "cycle_id": cycle_id,
+    
