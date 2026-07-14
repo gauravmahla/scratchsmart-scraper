@@ -7,7 +7,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
-from sklearn.preprocessing import MinMaxScaler
 
 # ==========================================
 # 0. CUSTOM ENCODER FOR PANDAS/NUMPY DATA
@@ -128,17 +127,20 @@ def execute_p5_traps(p5_df):
 
     mutated_array = []
     for i, col in enumerate(num_cols):
-        slot_history = p5_df[col].dropna().values
-        if len(slot_history) > 0:
-            digits, counts = np.unique(slot_history, return_counts=True)
-            slot_probs = counts / counts.sum()
-            mutated_digit = int(np.random.choice(digits, p=slot_probs))
+        if col in p5_df.columns:
+            slot_history = p5_df[col].dropna().values
+            if len(slot_history) > 0:
+                digits, counts = np.unique(slot_history, return_counts=True)
+                slot_probs = counts / counts.sum()
+                mutated_digit = int(np.random.choice(digits, p=slot_probs))
+            else:
+                mutated_digit = int(i % 10)
         else:
             mutated_digit = int(i % 10)
         mutated_array.append(mutated_digit)
 
     if not mutated_array:
-        mutated_array = []
+        mutated_array = [0, 1, 2, 3, 4]
 
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
@@ -254,6 +256,4 @@ if __name__ == "__main__":
         
         f5_out = execute_f5_traps(f5_data)
         p5_out = execute_p5_traps(p5_data)
-        
-        load_mesh_state(db_engine, f5_out, p5_out)
-        
+
