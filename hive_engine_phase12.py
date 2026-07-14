@@ -60,19 +60,15 @@ def execute_p5_traps(p5_df):
 # ==========================================
 # 3. BI PAYLOAD ASSEMBLY & DATABASE LOAD
 # ==========================================
-from zoneinfo import ZoneInfo  # Python 3.9+ built-in, safer than pytz
+import sys  # Added to force system exit signals
+from zoneinfo import ZoneInfo
 
 def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     print("[SYSTEM] Assembling JSON Business Intelligence Narrative...")
     
-    # Force alignment across cloud environments to US/Eastern timezone
     est_tz = ZoneInfo('US/Eastern')
     current_time_est = datetime.now(est_tz)
-    
-    # Derive absolute UTC object to override native DB clock mismatches
     current_time_utc = current_time_est.astimezone(ZoneInfo('UTC'))
-    
-    # Generate the unique cycle identification integer anchor
     cycle_id = f"CYC-PH12-{int(current_time_est.timestamp())}"
     
     payload = {
@@ -95,21 +91,33 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     
     json_payload = json.dumps(payload)
     
-    # Explicitly supply the exact Python UTC time to the insert parameter (:created_at)
-    # Instead of relying on PostgreSQL NOW() which uses the host system clock
     insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
         VALUES (:cycle_id, :created_at, CAST(:payload AS jsonb))
     """)
     
-    with engine.begin() as conn:
-        conn.execute(
-            insert_query, 
-            {
-                "cycle_id": cycle_id, 
-                "created_at": current_time_utc,  # Binds deterministic UTC datetime 
-                "payload": json_payload
-            }
-        )
+    print(f"[DATABASE] Attempting connection to insert {cycle_id}...")
+    
+    try:
+        with engine.begin() as conn:
+            # Force a simple test query to verify connectivity immediately
+            conn.execute(text("SELECT 1;"))
+            print("[DATABASE] Connection handshake successful.")
+            
+            # Execute the actual insert statement
+            result = conn.execute(
+                insert_query, 
+                {
+                    "cycle_id": cycle_id, 
+                    "created_at": current_time_utc, 
+                    "payload": json_payload
+                }
+            )
+        print(f"[SUCCESS] Phase 12 Payload crystallized and locked in Database.")
         
-    print(f"[SUCCESS] Phase 12 Payload crystallized for {cycle_id} and locked in Database.")
+    except Exception as db_error:
+        print("\n!!!!!!!! [CRITICAL DATABASE ERROR DETECTED] !!!!!!!!", file=sys.stderr)
+        print(f"Error Details: {str(db_error)}", file=sys.stderr)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", file=sys.stderr)
+        # Force GitHub Actions to catch the failure and turn the check RED
+        sys.exit(1)
