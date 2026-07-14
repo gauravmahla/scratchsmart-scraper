@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
-from sklearn.preprocessing import MinMaxScaler  # Pre-installed pipeline dependencies
+from sklearn.preprocessing import MinMaxScaler
 
 # ==========================================
 # 0. CUSTOM ENCODER FOR PANDAS/NUMPY DATA
@@ -62,37 +62,40 @@ def execute_f5_traps(f5_df):
     print("[KDD] Running Fantasy 5 Dynamic Apriori / Probability Shifter...")
     
     if f5_df.empty:
-        return {"active_hypothesis": "Fallback Mode", "panels": []}
+        return {
+            "active_hypothesis": "Fallback Mode - Empty DB",
+            "kdd_maturity_index": "50/100",
+            "ev_status": "NEUTRAL",
+            "panels": [
+                {"slip_id": "F5-A", "array":, "add_on": "EZMATCH: NO"},
+                {"slip_id": "F5-B", "array":, "add_on": "EZMATCH: NO"}
+            ]
+        }
         
-    # Isolate drawing column vectors dynamically
     num_cols = [c for c in f5_df.columns if 'num' in c.lower() or 'digit' in c.lower()][:5]
     if not num_cols:
-        # Fallback tracking if column labeling matches an alternative convention
         num_cols = list(f5_df.select_dtypes(include=[np.number]).columns[:5])
 
-    # Convert entire history block into an evaluation matrix
     matrix = f5_df[num_cols].dropna().values
     
-    # Calculate global tracking frequencies across the 90-draw scope
-    unique, counts = np.unique(matrix, return_counts=True)
-    freq_dict = dict(zip(unique, counts))
-    
-    # Calculate historical frequency weights for mutation assignment
-    all_numbers = sorted(list(freq_dict.keys()))
-    weights = np.array([freq_dict[n] for n in all_numbers], dtype=float)
-    probabilities = weights / weights.sum()
-    
-    # Mutate predictions using weighted probability matrices instead of row-1 echoes
-    # Random but predictable generation anchored by historical frequencies
-    np.random.seed(int(datetime.now().timestamp()) % 100000)
-    
-    def generate_mutated_panel():
-        # Select 5 distinct numbers based on frequency probabilities
-        chosen = np.random.choice(all_numbers, size=5, replace=False, p=probabilities)
-        return sorted([int(x) for x in chosen])
+    if matrix.size == 0:
+        panel_a = [1, 2, 3, 4, 5]
+        panel_b = [6, 7, 8, 9, 10]
+    else:
+        unique, counts = np.unique(matrix, return_counts=True)
+        freq_dict = dict(zip(unique, counts))
+        all_numbers = sorted(list(freq_dict.keys()))
+        weights = np.array([freq_dict[n] for n in all_numbers], dtype=float)
+        probabilities = weights / weights.sum()
+        
+        np.random.seed(int(datetime.now().timestamp()) % 100000)
+        
+        def generate_mutated_panel():
+            chosen = np.random.choice(all_numbers, size=5, replace=False, p=probabilities)
+            return sorted([int(x) for x in chosen])
 
-    panel_a = generate_mutated_panel()
-    panel_b = generate_mutated_panel()
+        panel_a = generate_mutated_panel()
+        panel_b = generate_mutated_panel()
     
     return {
         "active_hypothesis": "Iso-Frequency Banding & Apriori Horizontal Cluster Matrix",
@@ -108,37 +111,35 @@ def execute_p5_traps(p5_df):
     print("[KDD] Running Pick 5 Markov Chain & Dynamic Play-Type Engine...")
     
     if p5_df.empty:
-        return {"active_hypothesis": "Fallback Mode", "panels": []}
+        return {
+            "active_hypothesis": "Fallback Mode - Empty DB",
+            "herd_evasion_score": "50%",
+            "capital_var_exposure": "$1.00",
+            "risk_quarantine_status": "CLEARED",
+            "internal_profile_assessment": "FALLBACK VECTORS",
+            "panels": [
+                {"slip_id": "P5-A", "array":, "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
+            ]
+        }
 
     num_cols = [c for c in p5_df.columns if 'num' in c.lower() or 'digit' in c.lower()][:5]
     if not num_cols:
         num_cols = list(p5_df.select_dtypes(include=[np.number]).columns[:5])
 
-    # Dynamic Array Generation via Positional Slot Probability Maps
     mutated_array = []
     for i, col in enumerate(num_cols):
-        # Track digit distribution history specific to positional slot index (0 through 4)
         slot_history = p5_df[col].dropna().values
         if len(slot_history) > 0:
             digits, counts = np.unique(slot_history, return_counts=True)
             slot_probs = counts / counts.sum()
-            # Mutate structural index state based on slot matrix trends
             mutated_digit = int(np.random.choice(digits, p=slot_probs))
         else:
             mutated_digit = int(i % 10)
         mutated_array.append(mutated_digit)
 
-    # ----------------------------------------------------
-    # DYNAMIC PLAY-TYPE ENFORCEMENT ENGINE (THE 120-WAY FIX)
-    # ----------------------------------------------------
-    # Florida Lottery Rules Breakdown for Pick 5 Box bets:
-    # 5 unique digits = 120-Way Box
-    # 1 pair of identical digits (e.g., [4,1,1,8,5]) = 60-Way Box
-    # 2 separate pairs (e.g., [1,1,2,2,3]) = 30-Way Box
-    # 3 identical digits (e.g., [1,1,1,2,3]) = 20-Way Box
-    # 1 full house / 3 of a kind + 1 pair (e.g., [1,1,1,2,2]) = 10-Way Box
-    # 4 identical digits (e.g., [1,1,1,1,2]) = 5-Way Box
-    
+    if not mutated_array:
+        mutated_array = [0, 1, 2, 3, 4]
+
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
     distinct_count = len(unique_digits)
@@ -197,7 +198,6 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     current_time_utc = current_time_est.astimezone(ZoneInfo('UTC'))
     cycle_id = f"CYC-PH12-{int(current_time_est.timestamp())}"
     
-    # Dynamically scale downstream pipeline KPIs directly from upstream algorithmic risk flags
     computed_quarantine = p5_intelligence.get("risk_quarantine_status", "CLEARED")
     
     payload = {
@@ -225,7 +225,7 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
         VALUES (:cycle_id, :created_at, CAST(:payload AS jsonb));
     """)
     
-    print(f"[DATABASE] Committing row data for cycle: {cycle_id}")
+    print(f"[DATABASE] Attempting atomic transaction block for: {cycle_id}")
     
     try:
         with engine.connect() as conn:
@@ -238,4 +238,20 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
                         "payload": json_payload
                     }
                 )
-                
+        print(f"✅ [SUCCESS] Row successfully written and committed to daily_mesh_state!")
+        
+    except Exception as db_error:
+        print(f"\n❌ [CRITICAL DATABASE WRITE ERROR]: {str(db_error)}", file=sys.stderr)
+        sys.exit(1)
+
+# ==========================================
+# 4. ORCHESTRATION PIPELINE CONTROL
+# ==========================================
+if __name__ == "__main__":
+    try:
+        db_engine = initialize_engine()
+        f5_data, p5_data = extract_raw_data(db_engine)
+        
+        f5_out = execute_f5_traps(f5_data)
+        p5_out = execute_p5_traps(p5_data)
+
