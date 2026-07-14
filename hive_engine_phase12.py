@@ -143,7 +143,7 @@ def execute_p5_traps(p5_df):
         try:
             mutated_array = [int(x) for x in p5_df[num_cols].dropna().iloc[0].values]
         except Exception:
-            mutated_array = [0, 0, 0, 0, 0]
+            mutated_array = [0, 1, 2, 3, 4]
 
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
@@ -253,4 +253,5 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
 # 4. ORCHESTRATION PIPELINE CONTROL
 # ==========================================
 if __name__ == "__main__":
-     
+    try:
+        
