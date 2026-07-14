@@ -3,9 +3,9 @@ import sys
 import json
 import pandas as pd
 from datetime import datetime
-from zoneinfo import ZoneInfo  # Built-in safe Python 3.9+ timezone management
+from zoneinfo import ZoneInfo  # Safe Python 3.9+ timezone management
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import NullPool  # Prevents Supabase/PgBouncer silent pooling drops
+from sqlalchemy.pool import NullPool  # Prevents Supabase silent pooling drops
 
 # ==========================================
 # 1. SYSTEM INITIALIZATION & ETL
@@ -159,3 +159,4 @@ if __name__ == "__main__":
     except Exception as system_fault:
         print(f"\n❌ [UNHANDLED CORE SYSTEM FAULT]: {str(system_fault)}", file=sys.stderr)
         sys.exit(1)
+        
