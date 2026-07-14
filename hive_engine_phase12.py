@@ -139,8 +139,8 @@ def execute_p5_traps(p5_df):
             mutated_digit = int(i % 10)
         mutated_array.append(mutated_digit)
 
-    if not mutated_array:
-        mutated_array = [0, 1, 2, 3, 4]
+    if not mutated_array and p5_df.size > 0:
+        mutated_array = [int(x) for x in p5_df[num_cols].dropna().iloc[0].values]
 
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
@@ -155,14 +155,14 @@ def execute_p5_traps(p5_df):
         risk_profile = "MEDIUM VARIANCE - SINGLE DOUBLE ENCOUNTERED"
         variance_flag = "STABILIZED"
     elif distinct_count == 3:
-        if sorted_counts[0] == 3:
+        if len(sorted_counts) > 0 and sorted_counts[0] == 3:
             derived_play_type = "20-WAY BOX"
         else:
             derived_play_type = "30-WAY BOX"
         risk_profile = "HIGH VARIANCE - MULTI-PAIR CLUSTER"
         variance_flag = "FLAGGED - RECORD LEVEL RISK"
     elif distinct_count == 2:
-        if sorted_counts[0] == 4:
+        if len(sorted_counts) > 0 and sorted_counts[0] == 4:
             derived_play_type = "5-WAY BOX"
         else:
             derived_play_type = "10-WAY BOX"
@@ -253,7 +253,4 @@ if __name__ == "__main__":
     try:
         db_engine = initialize_engine()
         f5_data, p5_data = extract_raw_data(db_engine)
-        
-        f5_out = execute_f5_traps(f5_data)
-        p5_out = execute_p5_traps(p5_data)
 
