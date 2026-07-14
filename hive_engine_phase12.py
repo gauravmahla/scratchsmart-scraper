@@ -67,8 +67,8 @@ def execute_f5_traps(f5_df):
             "kdd_maturity_index": "50/100",
             "ev_status": "NEUTRAL",
             "panels": [
-                {"slip_id": "F5-A", "array":, "add_on": "EZMATCH: NO"},
-                {"slip_id": "F5-B", "array":, "add_on": "EZMATCH: NO"}
+                {"slip_id": "F5-A", "array": [], "add_on": "EZMATCH: NO"},
+                {"slip_id": "F5-B", "array": [], "add_on": "EZMATCH: NO"}
             ]
         }
         
@@ -79,8 +79,8 @@ def execute_f5_traps(f5_df):
     matrix = f5_df[num_cols].dropna().values
     
     if matrix.size == 0:
-        panel_a = [1, 2, 3, 4, 5]
-        panel_b = [6, 7, 8, 9, 10]
+        panel_a = []
+        panel_b = []
     else:
         unique, counts = np.unique(matrix, return_counts=True)
         freq_dict = dict(zip(unique, counts))
@@ -118,7 +118,7 @@ def execute_p5_traps(p5_df):
             "risk_quarantine_status": "CLEARED",
             "internal_profile_assessment": "FALLBACK VECTORS",
             "panels": [
-                {"slip_id": "P5-A", "array":, "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
+                {"slip_id": "P5-A", "array": [], "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
             ]
         }
 
@@ -138,7 +138,7 @@ def execute_p5_traps(p5_df):
         mutated_array.append(mutated_digit)
 
     if not mutated_array:
-        mutated_array = [0, 1, 2, 3, 4]
+        mutated_array = []
 
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
@@ -254,4 +254,6 @@ if __name__ == "__main__":
         
         f5_out = execute_f5_traps(f5_data)
         p5_out = execute_p5_traps(p5_data)
-
+        
+        load_mesh_state(db_engine, f5_out, p5_out)
+        
