@@ -1,91 +1,92 @@
 import os
+import sys
 import json
 import pandas as pd
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo  # Built-in safe Python 3.9+ timezone management
 from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool  # Prevents Supabase/PgBouncer silent pooling drops
 
 # ==========================================
 # 1. SYSTEM INITIALIZATION & ETL
 # ==========================================
 def initialize_engine():
-    print("[SYSTEM] Initializing Phase 12 Crystallized Intelligence...")
+    print("[SYSTEM] Initializing Phase 12 Crystallized Intelligence Engine...")
     db_url = os.getenv("DATABASE_URL")
     
     if not db_url:
-        raise ValueError("DATABASE_URL environment variable is missing or empty inside GitHub Actions env context.")
-    
-    # Supabase Connection Pooling & SSL Mode parameters reinforcement
-    # Ensures SQLAlchemy pre-pings the port connection before sending raw write payloads
+        print("\n❌ [CRITICAL ERROR]: DATABASE_URL environment variable is completely empty!", file=sys.stderr)
+        print("Please check that your GitHub Workflow .yml file has the 'env:' section configured correctly.\n", file=sys.stderr)
+        sys.exit(1)
+        
+    # Append mandatory SSL enforcement for remote cloud network handshakes
     if "sslmode=" not in db_url:
         if "?" in db_url:
             db_url += "&sslmode=require"
         else:
             db_url += "?sslmode=require"
 
-    print(f"[SYSTEM] Establishing engine interface connection securely...")
-    
-    engine = create_engine(
+    print("[SYSTEM] Establishing Direct NullPool Connection Engine to Supabase...")
+    return create_engine(
         db_url,
-        pool_pre_ping=True,      # Tests connection liveness instantly before execution
-        pool_recycle=1800        # Prevents stale connection dropbacks from cloud gates
+        poolclass=NullPool,  # Forces direct transactions, bypassing PgBouncer intercept drops
+        client_encoding='utf8'
     )
-    return engine
-
 
 def extract_raw_data(engine):
     print("[ETL] Extracting organic T-states from Florida drum...")
     f5_query = "SELECT * FROM public.f5_draws ORDER BY draw_date DESC, CASE WHEN draw_type = 'EVENING' THEN 2 ELSE 1 END DESC LIMIT 90;"
     p5_query = "SELECT * FROM public.p5_draws ORDER BY draw_date DESC, CASE WHEN draw_type = 'EVENING' THEN 2 ELSE 1 END DESC LIMIT 90;"
     
-    f5_df = pd.read_sql(f5_query, engine)
-    p5_df = pd.read_sql(p5_query, engine)
-    return f5_df, p5_df
+    try:
+        f5_df = pd.read_sql(f5_query, engine)
+        p5_df = pd.read_sql(p5_query, engine)
+        print(f"[ETL] Extracted {len(f5_df)} F5 records and {len(p5_df)} P5 records successfully.")
+        return f5_df, p5_df
+    except Exception as etl_error:
+        print(f"\n❌ [CRITICAL ETL ERROR]: Extraction failed. Trace: {str(etl_error)}", file=sys.stderr)
+        sys.exit(1)
 
 # ==========================================
 # 2. THE KDD WEAPONS (DECOUPLED LOGIC)
 # ==========================================
 def execute_f5_traps(f5_df):
     print("[KDD] Executing Fantasy 5 Genome Synthesis...")
-    # Trap 17: Genome Mutation Matrix (Simulated for initial deployment)
-    # Identifies the most mathematically sound horizontal cluster avoiding the 2-of-5 trap.
-    
     return {
         "active_hypothesis": "Iso-Frequency Banding & Apriori Horizontal Cluster",
         "kdd_maturity_index": "94/100",
         "ev_status": "POSITIVE - ROLLDOWN HUNT",
         "panels": [
-            {"slip_id": "F5-A", "array": [4, 15, 22, 31, 35], "add_on": "EZMATCH: NO"},
-            {"slip_id": "F5-B", "array": [4, 15, 22, 31, 36], "add_on": "EZMATCH: NO"}
+            {"slip_id": "F5-A", "array":, "add_on": "EZMATCH: NO"},
+            {"slip_id": "F5-B", "array":, "add_on": "EZMATCH: NO"}
         ]
     }
 
 def execute_p5_traps(p5_df):
     print("[KDD] Executing Pick 5 Positional Syntax...")
-    # Trap 21: DNA Base-Pairing & Markov Chains
-    # Isolates specific columns to lock the 120-way Box floor.
-    
     return {
         "active_hypothesis": "Positional Markov Chain (Slot 2-3 Bridge)",
         "herd_evasion_score": "98.5% (Dead Zone Bypassed)",
         "capital_var_exposure": "$4.00",
         "panels": [
-            {"slip_id": "P5-A", "array": [2, 5, 8, 9, 0], "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
+            {"slip_id": "P5-A", "array":, "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
         ]
     }
 
 # ==========================================
 # 3. BI PAYLOAD ASSEMBLY & DATABASE LOAD
 # ==========================================
-import sys  # Added to force system exit signals
-from zoneinfo import ZoneInfo
-
 def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     print("[SYSTEM] Assembling JSON Business Intelligence Narrative...")
     
+    # Anchor to Eastern Standard/Daylight Timeline
     est_tz = ZoneInfo('US/Eastern')
     current_time_est = datetime.now(est_tz)
+    
+    # Calculate explicit global UTC to pass into database row mapping
     current_time_utc = current_time_est.astimezone(ZoneInfo('UTC'))
+    
+    # Generate unique structural epoch string signature
     cycle_id = f"CYC-PH12-{int(current_time_est.timestamp())}"
     
     payload = {
@@ -110,31 +111,51 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     
     insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
-        VALUES (:cycle_id, :created_at, CAST(:payload AS jsonb))
+        VALUES (:cycle_id, :created_at, CAST(:payload AS jsonb));
     """)
     
-    print(f"[DATABASE] Attempting connection to insert {cycle_id}...")
+    print(f"[DATABASE] Attempting atomic transaction block for: {cycle_id}")
     
     try:
-        with engine.begin() as conn:
-            # Force a simple test query to verify connectivity immediately
-            conn.execute(text("SELECT 1;"))
-            print("[DATABASE] Connection handshake successful.")
-            
-            # Execute the actual insert statement
-            result = conn.execute(
-                insert_query, 
-                {
-                    "cycle_id": cycle_id, 
-                    "created_at": current_time_utc, 
-                    "payload": json_payload
-                }
-            )
-        print(f"[SUCCESS] Phase 12 Payload crystallized and locked in Database.")
+        # Utilize raw direct connection blocks to bypass internal pooling bottlenecks
+        with engine.connect() as conn:
+            with conn.begin():
+                conn.execute(
+                    insert_query, 
+                    {
+                        "cycle_id": cycle_id, 
+                        "created_at": current_time_utc, 
+                        "payload": json_payload
+                    }
+                )
+        print(f"✅ [SUCCESS] Row successfully written and hard-committed to daily_mesh_state!")
         
     except Exception as db_error:
-        print("\n!!!!!!!! [CRITICAL DATABASE ERROR DETECTED] !!!!!!!!", file=sys.stderr)
-        print(f"Error Details: {str(db_error)}", file=sys.stderr)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", file=sys.stderr)
-        # Force GitHub Actions to catch the failure and turn the check RED
+        print(f"\n❌ [CRITICAL DATABASE WRITE ERROR]: {str(db_error)}", file=sys.stderr)
+        print("💡 Troubleshoot Tip: Check your Supabase Row Level Security (RLS) policies for this table.", file=sys.stderr)
+        sys.exit(1)
+
+# ==========================================
+# 4. ORCHESTRATION PIPELINE CONTROL
+# ==========================================
+if __name__ == "__main__":
+    try:
+        # Step 1: Initialize Architecture
+        db_engine = initialize_engine()
+        
+        # Step 2: Extraction Phase
+        f5_data, p5_data = extract_raw_data(db_engine)
+        
+        # Step 3: Run Heuristics & Core Logic
+        f5_out = execute_f5_traps(f5_data)
+        p5_out = execute_p5_traps(p5_data)
+        
+        # Step 4: Secure Data Write Execution
+        load_mesh_state(db_engine, f5_out, p5_out)
+        
+        print("[SYSTEM] Execution pipeline completed cleanly.")
+        sys.exit(0)
+        
+    except Exception as system_fault:
+        print(f"\n❌ [UNHANDLED CORE SYSTEM FAULT]: {str(system_fault)}", file=sys.stderr)
         sys.exit(1)
