@@ -139,8 +139,11 @@ def execute_p5_traps(p5_df):
             mutated_digit = int(i % 10)
         mutated_array.append(mutated_digit)
 
-    if not mutated_array and p5_df.size > 0:
-        mutated_array = [int(x) for x in p5_df[num_cols].dropna().iloc[0].values]
+    if not mutated_array and not p5_df.empty:
+        try:
+            mutated_array = [int(x) for x in p5_df[num_cols].dropna().iloc[0].values]
+        except Exception:
+            mutated_array = [0, 1, 2, 3, 4]
 
     unique_digits, digit_counts = np.unique(mutated_array, return_counts=True)
     sorted_counts = sorted(list(digit_counts), reverse=True)
@@ -251,6 +254,4 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
 # ==========================================
 if __name__ == "__main__":
     try:
-        db_engine = initialize_engine()
-        f5_data, p5_data = extract_raw_data(db_engine)
-
+        
