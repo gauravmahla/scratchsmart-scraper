@@ -86,10 +86,11 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     
     json_payload = json.dumps(payload)
     
-    insert_query = text("""
+        insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
-        VALUES (:cycle_id, NOW(), :payload::jsonb)
+        VALUES (:cycle_id, NOW(), CAST(:payload AS jsonb))
     """)
+
     
     with engine.begin() as conn:
         conn.execute(insert_query, {"cycle_id": cycle_id, "payload": json_payload})
