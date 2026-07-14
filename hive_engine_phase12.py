@@ -86,26 +86,13 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     
     json_payload = json.dumps(payload)
     
-        insert_query = text("""
+    insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
         VALUES (:cycle_id, NOW(), CAST(:payload AS jsonb))
     """)
-
     
     with engine.begin() as conn:
         conn.execute(insert_query, {"cycle_id": cycle_id, "payload": json_payload})
         
     print("[SUCCESS] Phase 12 Payload crystallized and locked in Database.")
 
-# ==========================================
-# 4. MAIN WORKFLOW
-# ==========================================
-if __name__ == "__main__":
-    db_engine = initialize_engine()
-    f5_history, p5_history = extract_raw_data(db_engine)
-    
-    f5_intel = execute_f5_traps(f5_history)
-    p5_intel = execute_p5_traps(p5_history)
-    
-    load_mesh_state(db_engine, f5_intel, p5_intel)
-  
