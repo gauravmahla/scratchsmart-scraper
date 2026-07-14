@@ -11,10 +11,27 @@ from sqlalchemy import create_engine, text
 def initialize_engine():
     print("[SYSTEM] Initializing Phase 12 Crystallized Intelligence...")
     db_url = os.getenv("DATABASE_URL")
+    
     if not db_url:
-        raise ValueError("DATABASE_URL environment variable is missing.")
-    engine = create_engine(db_url)
+        raise ValueError("DATABASE_URL environment variable is missing or empty inside GitHub Actions env context.")
+    
+    # Supabase Connection Pooling & SSL Mode parameters reinforcement
+    # Ensures SQLAlchemy pre-pings the port connection before sending raw write payloads
+    if "sslmode=" not in db_url:
+        if "?" in db_url:
+            db_url += "&sslmode=require"
+        else:
+            db_url += "?sslmode=require"
+
+    print(f"[SYSTEM] Establishing engine interface connection securely...")
+    
+    engine = create_engine(
+        db_url,
+        pool_pre_ping=True,      # Tests connection liveness instantly before execution
+        pool_recycle=1800        # Prevents stale connection dropbacks from cloud gates
+    )
     return engine
+
 
 def extract_raw_data(engine):
     print("[ETL] Extracting organic T-states from Florida drum...")
