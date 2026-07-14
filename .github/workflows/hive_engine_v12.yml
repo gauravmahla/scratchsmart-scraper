@@ -23,6 +23,8 @@ jobs:
       - name: Execute Phase 12 Hive Engine
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        # Adding 'set -e' forces the bash runner to turn RED immediately if Python hits an issue
         run: |
+          set -e
           python hive_engine_phase12.py
           
