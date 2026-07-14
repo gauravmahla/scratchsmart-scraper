@@ -60,17 +60,26 @@ def execute_p5_traps(p5_df):
 # ==========================================
 # 3. BI PAYLOAD ASSEMBLY & DATABASE LOAD
 # ==========================================
+from zoneinfo import ZoneInfo  # Python 3.9+ built-in, safer than pytz
+
 def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     print("[SYSTEM] Assembling JSON Business Intelligence Narrative...")
-    est_tz = pytz.timezone('US/Eastern')
-    current_time = datetime.now(est_tz)
-    cycle_id = f"CYC-PH12-{int(current_time.timestamp())}"
+    
+    # Force alignment across cloud environments to US/Eastern timezone
+    est_tz = ZoneInfo('US/Eastern')
+    current_time_est = datetime.now(est_tz)
+    
+    # Derive absolute UTC object to override native DB clock mismatches
+    current_time_utc = current_time_est.astimezone(ZoneInfo('UTC'))
+    
+    # Generate the unique cycle identification integer anchor
+    cycle_id = f"CYC-PH12-{int(current_time_est.timestamp())}"
     
     payload = {
         "mission_control": {
             "cycle_id": cycle_id,
             "target_session": "EVENING",
-            "execution_time_est": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "execution_time_est": current_time_est.strftime("%Y-%m-%d %H:%M:%S"),
             "system_health": "OPTIMIZED - ZERO HALLUCINATION"
         },
         "portfolios": {
@@ -86,13 +95,21 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
     
     json_payload = json.dumps(payload)
     
+    # Explicitly supply the exact Python UTC time to the insert parameter (:created_at)
+    # Instead of relying on PostgreSQL NOW() which uses the host system clock
     insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
-        VALUES (:cycle_id, NOW(), CAST(:payload AS jsonb))
+        VALUES (:cycle_id, :created_at, CAST(:payload AS jsonb))
     """)
     
     with engine.begin() as conn:
-        conn.execute(insert_query, {"cycle_id": cycle_id, "payload": json_payload})
+        conn.execute(
+            insert_query, 
+            {
+                "cycle_id": cycle_id, 
+                "created_at": current_time_utc,  # Binds deterministic UTC datetime 
+                "payload": json_payload
+            }
+        )
         
-    print("[SUCCESS] Phase 12 Payload crystallized and locked in Database.")
-
+    print(f"[SUCCESS] Phase 12 Payload crystallized for {cycle_id} and locked in Database.")
