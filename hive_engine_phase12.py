@@ -1,11 +1,28 @@
 import os
 import sys
 import json
+import numpy as np
 import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo  # Safe Python 3.9+ timezone management
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool  # Prevents Supabase silent pooling drops
+
+# ==========================================
+# 0. CUSTOM ENCODER FOR PANDAS/NUMPY DATA
+# ==========================================
+class DataMeshJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder to safely translate Pandas/Numpy data types into standard JSON format."""
+    def default(self, obj):
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, (np.ndarray, list)):
+            return [self.default(v) for v in obj]
+        elif isinstance(obj, pd.Series):
+            return obj.tolist()
+        return super(DataMeshJSONEncoder, self).default(obj)
 
 # ==========================================
 # 1. SYSTEM INITIALIZATION & ETL
@@ -53,33 +70,42 @@ def extract_raw_data(engine):
 def execute_f5_traps(f5_df):
     print("[KDD] Executing Fantasy 5 Genome Synthesis...")
     
-    # Dynamically extract real arrays from your fetched dataframe columns
-    # Safe fallbacks applied if database tables are temporarily empty
-    sample_a = list(f5_df.iloc[0].filter(like='num').values) if not f5_df.empty else [4, 15, 22, 31, 35]
-    sample_b = list(f5_df.iloc[1].filter(like='num').values) if len(f5_df) > 1 else [4, 15, 22, 31, 36]
+    # Safely look for matching numeric columns inside your dataframe
+    num_cols = [c for c in f5_df.columns if 'num' in c.lower() or 'digit' in c.lower()]
+    
+    if not f5_df.empty and num_cols:
+        sample_a = f5_df.iloc[0][num_cols].tolist()
+        sample_b = f5_df.iloc[1][num_cols].tolist() if len(f5_df) > 1 else sample_a
+    else:
+        sample_a = [4, 15, 22, 31, 35]
+        sample_b = [4, 15, 22, 31, 36]
     
     return {
         "active_hypothesis": "Iso-Frequency Banding & Apriori Horizontal Cluster",
         "kdd_maturity_index": "94/100",
         "ev_status": "POSITIVE - ROLLDOWN HUNT",
         "panels": [
-            {"slip_id": "F5-A", "array": list(sample_a), "add_on": "EZMATCH: NO"},
-            {"slip_id": "F5-B", "array": list(sample_b), "add_on": "EZMATCH: NO"}
+            {"slip_id": "F5-A", "array": sample_a, "add_on": "EZMATCH: NO"},
+            {"slip_id": "F5-B", "array": sample_b, "add_on": "EZMATCH: NO"}
         ]
     }
 
 def execute_p5_traps(p5_df):
     print("[KDD] Executing Pick 5 Positional Syntax...")
     
-    # Dynamically extract real arrays from your fetched dataframe columns
-    sample_p5 = list(p5_df.iloc[0].filter(like='num').values) if not p5_df.empty else [2, 5, 8, 9, 0]
+    num_cols = [c for c in p5_df.columns if 'num' in c.lower() or 'digit' in c.lower()]
+    
+    if not p5_df.empty and num_cols:
+        sample_p5 = p5_df.iloc[0][num_cols].tolist()
+    else:
+        sample_p5 = [2, 5, 8, 9, 0]
     
     return {
         "active_hypothesis": "Positional Markov Chain (Slot 2-3 Bridge)",
         "herd_evasion_score": "98.5% (Dead Zone Bypassed)",
         "capital_var_exposure": "$4.00",
         "panels": [
-            {"slip_id": "P5-A", "array": list(sample_p5), "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
+            {"slip_id": "P5-A", "array": sample_p5, "play_type": "120-WAY BOX", "add_on": "FIREBALL: YES (Splice Target)"}
         ]
     }
 
@@ -117,7 +143,8 @@ def load_mesh_state(engine, f5_intelligence, p5_intelligence):
         }
     }
     
-    json_payload = json.dumps(payload)
+    # Use the custom encoder to translate Numpy objects securely
+    json_payload = json.dumps(payload, cls=DataMeshJSONEncoder)
     
     insert_query = text("""
         INSERT INTO public.daily_mesh_state (cycle_id, created_at, state_payload)
