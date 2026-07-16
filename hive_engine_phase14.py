@@ -115,39 +115,115 @@ def generate_f5_intelligence(f5_df):
     hot_f5 = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
     cold_f5 = hot_f5[::-1]
     
+# ==========================================
+# 1. PICK 5 - SPLIT NET (120-WAY + 60-WAY TRAP)
+# ==========================================
+def generate_p5_intelligence(p5_df):
+    p5_matrix = p5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
+    
+    # Exponential momentum weighting
+    weights = np.linspace(0.1, 1.0, len(p5_matrix))
+    weighted_counts = {}
+    for i, row in enumerate(p5_matrix[::-1]):
+        for digit in row:
+            weighted_counts[digit] = weighted_counts.get(digit, 0) + weights[i]
+            
+    hot_digits = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
+    cold_digits = hot_digits[::-1]
+    
+    panels = []
+    
+    # TRAP A: 120-WAY FIREBALL NET (3 Panels = $6.00)
+    # Hunts distinct numbers. 4 Anchors + 3 unique variables.
+    anchors_120 = hot_digits[:4]
+    vars_120 = [d for d in hot_digits if d not in anchors_120][:3]
+    
+    for idx, var in enumerate(vars_120):
+        panels.append({
+            "slip_id": f"P5-MOMENTUM-120-{chr(65+idx)}",
+            "array": anchors_120 + [var],
+            "play_type": "120-WAY BOX",
+            "add_on": f"FIREBALL: {anchors_120[0]} (INCLUSIVE)",
+            "cost": "$2.00"
+        })
+
+    # TRAP B: 60-WAY DUPLICATE FIREBALL NET (2 Panels = $4.00)
+    # Hunts the anomaly duplicate. Uses completely distinct subsets to prevent overlap.
+    double_digit = cold_digits[0]
+    vars_60 = [d for d in hot_digits if d != double_digit][:6]
+    
+    # Panel D uses first 3 vars, Panel E uses next 3 vars (Guarantees zero redundancy)
+    panels.append({
+        "slip_id": "P5-ANOMALY-60-D",
+        "array": [double_digit, double_digit] + vars_60[0:3],
+        "play_type": "60-WAY BOX",
+        "add_on": f"FIREBALL: {double_digit} (INCLUSIVE)",
+        "cost": "$2.00"
+    })
+    
+    panels.append({
+        "slip_id": "P5-ANOMALY-60-E",
+        "array": [double_digit, double_digit] + vars_60[3:6],
+        "play_type": "60-WAY BOX",
+        "add_on": f"FIREBALL: {double_digit} (INCLUSIVE)",
+        "cost": "$2.00"
+    })
+
+    return {
+        "strategy": "Split Net (120-Way Momentum + 60-Way Anomaly)",
+        "budget_allocation": "$10.00",
+        "rationale": "Eliminated redundant overlapping arrays. $6 hunts distinct digits, $4 specifically hunts duplicate drops to trap variance.",
+        "panels": panels
+    }
+
+# ==========================================
+# 2. FANTASY 5 - SPLIT NET & EZMATCH SCALP
+# ==========================================
+def generate_f5_intelligence(f5_df):
+    f5_matrix = f5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
+    
+    weights = np.linspace(0.1, 1.0, len(f5_matrix))
+    weighted_counts = {}
+    for i, row in enumerate(f5_matrix[::-1]):
+        for num in row:
+            if num not in {2, 3, 5, 13}: # Pari-mutuel purge
+                weighted_counts[num] = weighted_counts.get(num, 0) + weights[i]
+                
+    hot_f5 = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
+    cold_f5 = hot_f5[::-1]
+    
     panels = []
     
     # TRAP A: HOT ANCHOR SCALP (2 Panels = $4.00)
+    # 4 Anchors + 2 unique variables. Guarantees exactly 5 unique numbers per panel.
     hot_anchors = hot_f5[:4]
-    for idx in range(2):
-        array = sorted(hot_anchors + [hot_f5[4+idx]])
+    hot_vars = [n for n in hot_f5 if n not in hot_anchors][:2]
+    
+    for idx, var in enumerate(hot_vars):
         panels.append({
             "slip_id": f"F5-HOT-SCALP-{chr(65+idx)}", 
-            "array": array, 
+            "array": sorted(hot_anchors + [var]), 
             "play_type": "STRAIGHT", 
             "add_on": "EZMATCH: YES", 
             "cost": "$2.00"
         })
 
     # TRAP B: COLD VARIANCE SCALP (3 Panels = $6.00)
+    # 3 Anchors + unique pairings. Guarantees exactly 5 unique numbers per panel.
     cold_anchors = cold_f5[:3]
-    for idx in range(3):
-        array = sorted(cold_anchors + cold_f5[3:5])
-        np.random.shuffle(cold_f5) # Rotate variables
-        panels.append({
-            "slip_id": f"F5-COLD-SCALP-{chr(67+idx)}", 
-            "array": array, 
-            "play_type": "STRAIGHT", 
-            "add_on": "EZMATCH: YES", 
-            "cost": "$2.00"
-        })
+    cold_vars = [n for n in cold_f5 if n not in cold_anchors][:6]
+    
+    panels.append({"slip_id": "F5-COLD-SCALP-C", "array": sorted(cold_anchors + cold_vars[0:2]), "play_type": "STRAIGHT", "add_on": "EZMATCH: YES", "cost": "$2.00"})
+    panels.append({"slip_id": "F5-COLD-SCALP-D", "array": sorted(cold_anchors + cold_vars[2:4]), "play_type": "STRAIGHT", "add_on": "EZMATCH: YES", "cost": "$2.00"})
+    panels.append({"slip_id": "F5-COLD-SCALP-E", "array": sorted(cold_anchors + cold_vars[4:6]), "play_type": "STRAIGHT", "add_on": "EZMATCH: YES", "cost": "$2.00"})
 
     return {
         "strategy": "Split Anchor + Universal EZmatch Scalp",
         "budget_allocation": "$10.00",
-        "rationale": "Reduced to 5 panels to activate EZmatch universally. Securing the 1:4.71 instant win probability to offset session costs while hedging Hot vs. Cold anchors.",
+        "rationale": "Reduced footprint to 5 panels to afford EZmatch universally. Securing the 1:4.71 instant win probability to offset session costs while hedging Hot vs. Cold anchors without array duplication.",
         "panels": panels
     }
+
 
 # ==========================================
 # 3. ENRICHED BI ASSEMBLY & DATABASE COMMIT
