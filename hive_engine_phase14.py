@@ -44,92 +44,87 @@ def extract_deep_time_data(engine):
     return df[df['matrix_source'] == 'F5'].drop(columns=['matrix_source']), df[df['matrix_source'] == 'P5'].drop(columns=['matrix_source'])
 
 # ==========================================
-# 1. PICK 5 - PROTEIN FOLDING & INVERSE PHALANX
+# 1. PICK 5 - 4-DIGIT ANCHOR & FIREBALL NET
 # ==========================================
 def generate_p5_intelligence(p5_df):
     p5_matrix = p5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
     all_digits = p5_matrix.flatten()
     unique_d, counts_d = np.unique(all_digits, return_counts=True)
-    hot_digits = unique_d[np.argsort(counts_d)][::-1]
     
-    # Inclusive-AND Fireball Selection
-    fireball_target = int(hot_digits[0])
+    # Calculate exponential momentum (heavily weighting recent draws over deep time)
+    weights = np.linspace(0.1, 1.0, len(p5_matrix))
+    weighted_counts = {}
+    for i, row in enumerate(p5_matrix[::-1]):
+        for digit in row:
+            weighted_counts[digit] = weighted_counts.get(digit, 0) + weights[i]
+            
+    hot_digits = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
     
-    # Array A: High Probability Strike (120-Way)
-    array_a = [fireball_target]
-    while len(array_a) < 5:
-        nxt = int(np.random.choice(hot_digits[:7]))
-        if nxt not in array_a: array_a.append(nxt)
-            
-    # Array B: The Inverse Phalanx (Destructive Interference)
-    available_for_b = [d for d in range(10) if d not in array_a]
-    fireball_b = available_for_b[0] if available_for_b else int(np.random.choice(10))
-    array_b = [fireball_b]
-    while len(array_b) < 5:
-        nxt = int(np.random.choice(available_for_b))
-        if nxt not in array_b: array_b.append(nxt)
-            
-    # Array C: John Wick Wildcard (Hunting Triples/Chaos)
-    array_c = [int(np.random.choice(hot_digits[-5:])) for _ in range(5)]
+    # The 4-Digit Anchor (Trap #14)
+    anchors = hot_digits[:4]
+    
+    # The 5 Variables (Ensuring 120-Way MECE compliance)
+    available_vars = [d for d in hot_digits if d not in anchors]
+    variables = available_vars[:5]
+    
+    panels = []
+    for idx, var in enumerate(variables):
+        array = anchors + [var]
+        panels.append({
+            "slip_id": f"P5-{chr(65+idx)} (Fireball Net)",
+            "array": array,
+            "play_type": "120-WAY BOX",
+            "add_on": f"FIREBALL: {anchors[0]} (INCLUSIVE-AND)",
+            "cost": "$2.00" # $1 base + $1 fireball
+        })
 
     return {
-        "strategy": "Dual Inverse Phalanx + Protein Folding Wildcard",
+        "strategy": "4-Digit Anchor & Fireball Net",
         "budget_allocation": "$10.00",
-        "rationale": "Forcing 120-way MECE distinct digits to maximize Fireball combination creation while locking out the $7M liability herd cap.",
-        "panels": [
-            {"slip_id": "P5-A (Phalanx 1)", "array": array_a, "play_type": "120-WAY BOX", "add_on": f"FIREBALL: {fireball_target} (INCLUSIVE-AND)", "cost": "$4.00"},
-            {"slip_id": "P5-B (Phalanx 2)", "array": array_b, "play_type": "120-WAY BOX", "add_on": f"FIREBALL: {fireball_b} (INCLUSIVE-AND)", "cost": "$4.00"},
-            {"slip_id": "P5-C (John Wick)", "array": array_c, "play_type": "STRAIGHT/BOX", "add_on": "FIREBALL: YES", "cost": "$2.00"}
-        ]
+        "rationale": "Concentrating probability on 4 anchors. If anchors hit, rotating 5th variable guarantees multiple 120-Way base ($416) and Fireball ($100) collisions.",
+        "panels": panels
     }
 
 # ==========================================
-# 2. FANTASY 5 - CRISPR SPLICE & RNA WHEEL
+# 2. FANTASY 5 - 3x5 ANCHOR-VARIABLE LOCK
 # ==========================================
 def generate_f5_intelligence(f5_df):
     f5_matrix = f5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
-    flat_f5 = f5_matrix.flatten()
-    unique_f5, counts_f5 = np.unique(flat_f5, return_counts=True)
-    sorted_f5 = unique_f5[np.argsort(counts_f5)][::-1]
     
-    # Purge Pari-Mutuel Traps
-    valid_f5 = [x for x in sorted_f5 if x not in {2, 3, 5, 13}]
+    # Exponential decay weighting to break the deep-time stagnation trap
+    weights = np.linspace(0.1, 1.0, len(f5_matrix))
+    weighted_counts = {}
+    for i, row in enumerate(f5_matrix[::-1]):
+        for num in row:
+            if num not in {2, 3, 5, 13}: # Pari-mutuel purge
+                weighted_counts[num] = weighted_counts.get(num, 0) + weights[i]
+                
+    hot_f5 = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
     
-    # CRISPR DNA Core (Top 6 absolute highest confidence for the RNA Wheel)
-    dna_core = valid_f5[:6]
-    lru_pool = valid_f5[-15:] # Cold stack for John Wick
+    # The 3-Digit Anchor Lock
+    anchors = hot_f5[:3]
+    
+    # The 5 Variables
+    variables = hot_f5[3:8]
     
     panels = []
     
-    # The RNA Combinatorial Wheel (6 Panels = $6.00)
-    wheel_combos = list(itertools.combinations(dna_core, 5))
-    for idx, combo in enumerate(wheel_combos):
+    # The Combinatorial Sweep (5 choose 2 = 10 Panels)
+    variable_pairs = list(itertools.combinations(variables, 2))
+    for idx, pair in enumerate(variable_pairs):
+        array = sorted(anchors + list(pair))
         panels.append({
-            "slip_id": f"F5-WHEEL-{chr(65+idx)}", 
-            "array": sorted(list(combo)), 
-            "play_type": "STRAIGHT", 
-            "add_on": "EZMATCH: NO", 
-            "cost": "$1.00"
-        })
-        
-    # John Wick Cold Anomaly Snipers (4 Panels = $4.00)
-    for idx in range(4):
-        jw_array = []
-        while len(jw_array) < 5:
-            nxt = int(np.random.choice(lru_pool))
-            if nxt not in jw_array: jw_array.append(nxt)
-        panels.append({
-            "slip_id": f"F5-JUNK-DNA-{chr(71+idx)}", 
-            "array": sorted(jw_array), 
+            "slip_id": f"F5-ANCHOR-LOCK-{chr(65+idx)}", 
+            "array": array, 
             "play_type": "STRAIGHT", 
             "add_on": "EZMATCH: NO", 
             "cost": "$1.00"
         })
 
     return {
-        "strategy": "RNA Cascading Wheel + CRISPR Splicing",
+        "strategy": "3x5 Anchor-Variable Lock",
         "budget_allocation": "$10.00",
-        "rationale": "Leveraging a 6-digit DNA core. If 5/6 hit, generates 1x Top Prize and 5x 4-of-5 ($555) Pari-Mutuel cascades.",
+        "rationale": "Anchoring 3 momentum numbers across all 10 panels. If 3 anchors hit, variable pairs guarantee massive 3-of-5 and 4-of-5 pari-mutuel sweeps.",
         "panels": panels
     }
 
