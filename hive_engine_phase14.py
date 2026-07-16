@@ -9,6 +9,9 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 
+# ==========================================
+# 0. DATA ENCODER & ARCHITECTURE INIT
+# ==========================================
 class DataMeshJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (np.integer, np.int64, np.int32)): return int(obj)
@@ -39,15 +42,15 @@ def extract_deep_time_data(engine):
     """
     df = pd.read_sql(query, engine)
     return df[df['matrix_source'] == 'F5'].drop(columns=['matrix_source']), df[df['matrix_source'] == 'P5'].drop(columns=['matrix_source'])
-    def generate_p5_intelligence(p5_df):
+
+# ==========================================
+# 1. PICK 5 - PROTEIN FOLDING & INVERSE PHALANX
+# ==========================================
+def generate_p5_intelligence(p5_df):
     p5_matrix = p5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
     all_digits = p5_matrix.flatten()
     unique_d, counts_d = np.unique(all_digits, return_counts=True)
     hot_digits = unique_d[np.argsort(counts_d)][::-1]
-    
-    # Protein Folding: Slot 1 & 5 Gravitational Pull
-    slot_1_history = p5_matrix[:, 0]
-    slot_5_history = p5_matrix[:, 4]
     
     # Inclusive-AND Fireball Selection
     fireball_target = int(hot_digits[0])
@@ -79,7 +82,11 @@ def extract_deep_time_data(engine):
             {"slip_id": "P5-C (John Wick)", "array": array_c, "play_type": "STRAIGHT/BOX", "add_on": "FIREBALL: YES", "cost": "$2.00"}
         ]
     }
-    def generate_f5_intelligence(f5_df):
+
+# ==========================================
+# 2. FANTASY 5 - CRISPR SPLICE & RNA WHEEL
+# ==========================================
+def generate_f5_intelligence(f5_df):
     f5_matrix = f5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
     flat_f5 = f5_matrix.flatten()
     unique_f5, counts_f5 = np.unique(flat_f5, return_counts=True)
@@ -125,7 +132,11 @@ def extract_deep_time_data(engine):
         "rationale": "Leveraging a 6-digit DNA core. If 5/6 hit, generates 1x Top Prize and 5x 4-of-5 ($555) Pari-Mutuel cascades.",
         "panels": panels
     }
-    def seal_and_commit(engine, p5_intel, f5_intel):
+
+# ==========================================
+# 3. ENRICHED BI ASSEMBLY & DATABASE COMMIT
+# ==========================================
+def seal_and_commit(engine, p5_intel, f5_intel):
     est_tz = ZoneInfo('US/Eastern')
     now = datetime.now(est_tz)
     cycle_id = f"CYC-PH14-{int(now.timestamp())}"
