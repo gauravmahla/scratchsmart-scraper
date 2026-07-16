@@ -44,14 +44,13 @@ def extract_deep_time_data(engine):
     return df[df['matrix_source'] == 'F5'].drop(columns=['matrix_source']), df[df['matrix_source'] == 'P5'].drop(columns=['matrix_source'])
 
 # ==========================================
-# 1. PICK 5 - 4-DIGIT ANCHOR & FIREBALL NET
+# 1. PICK 5 - SPLIT NET (120-WAY + 60-WAY DUPLICATE TRAP)
 # ==========================================
 def generate_p5_intelligence(p5_df):
     p5_matrix = p5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
     all_digits = p5_matrix.flatten()
-    unique_d, counts_d = np.unique(all_digits, return_counts=True)
     
-    # Calculate exponential momentum (heavily weighting recent draws over deep time)
+    # Exponential momentum weighting
     weights = np.linspace(0.1, 1.0, len(p5_matrix))
     weighted_counts = {}
     for i, row in enumerate(p5_matrix[::-1]):
@@ -59,39 +58,53 @@ def generate_p5_intelligence(p5_df):
             weighted_counts[digit] = weighted_counts.get(digit, 0) + weights[i]
             
     hot_digits = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
-    
-    # The 4-Digit Anchor (Trap #14)
-    anchors = hot_digits[:4]
-    
-    # The 5 Variables (Ensuring 120-Way MECE compliance)
-    available_vars = [d for d in hot_digits if d not in anchors]
-    variables = available_vars[:5]
+    cold_digits = hot_digits[::-1]
     
     panels = []
-    for idx, var in enumerate(variables):
-        array = anchors + [var]
+    
+    # TRAP A: 120-WAY FIREBALL NET (3 Panels = $6.00)
+    # Hunting distinct numbers with the top momentum
+    anchors_120 = hot_digits[:4]
+    vars_120 = [d for d in hot_digits if d not in anchors_120][:3]
+    
+    for idx, var in enumerate(vars_120):
         panels.append({
-            "slip_id": f"P5-{chr(65+idx)} (Fireball Net)",
-            "array": array,
+            "slip_id": f"P5-MOMENTUM-{chr(65+idx)}",
+            "array": anchors_120 + [var],
             "play_type": "120-WAY BOX",
-            "add_on": f"FIREBALL: {anchors[0]} (INCLUSIVE-AND)",
-            "cost": "$2.00" # $1 base + $1 fireball
+            "add_on": f"FIREBALL: {anchors_120[0]}",
+            "cost": "$2.00"
+        })
+
+    # TRAP B: 60-WAY DUPLICATE FIREBALL NET (2 Panels = $4.00)
+    # Hunting the duplicate anomaly using cold/variance digits
+    double_digit = cold_digits[0]
+    vars_60 = [d for d in hot_digits if d != double_digit][:3]
+    
+    for idx in range(2):
+        array = [double_digit, double_digit] + vars_60[:3]
+        np.random.shuffle(vars_60) # Rotate the variables slightly
+        panels.append({
+            "slip_id": f"P5-ANOMALY-{chr(68+idx)}",
+            "array": array,
+            "play_type": "60-WAY BOX",
+            "add_on": f"FIREBALL: {double_digit}",
+            "cost": "$2.00"
         })
 
     return {
-        "strategy": "4-Digit Anchor & Fireball Net",
+        "strategy": "Split Net (120-Way Momentum + 60-Way Anomaly)",
         "budget_allocation": "$10.00",
-        "rationale": "Concentrating probability on 4 anchors. If anchors hit, rotating 5th variable guarantees multiple 120-Way base ($416) and Fireball ($100) collisions.",
+        "rationale": "Hedging the $10 budget. $6 hunts the distinct momentum digits. $4 specifically hunts duplicate physical drum drops.",
         "panels": panels
     }
 
 # ==========================================
-# 2. FANTASY 5 - 3x5 ANCHOR-VARIABLE LOCK
+# 2. FANTASY 5 - SPLIT NET & EZMATCH SCALP
 # ==========================================
 def generate_f5_intelligence(f5_df):
     f5_matrix = f5_df[['num1', 'num2', 'num3', 'num4', 'num5']].values.astype(int)
     
-    # Exponential decay weighting to break the deep-time stagnation trap
     weights = np.linspace(0.1, 1.0, len(f5_matrix))
     weighted_counts = {}
     for i, row in enumerate(f5_matrix[::-1]):
@@ -100,31 +113,39 @@ def generate_f5_intelligence(f5_df):
                 weighted_counts[num] = weighted_counts.get(num, 0) + weights[i]
                 
     hot_f5 = sorted(weighted_counts.keys(), key=lambda x: weighted_counts[x], reverse=True)
-    
-    # The 3-Digit Anchor Lock
-    anchors = hot_f5[:3]
-    
-    # The 5 Variables
-    variables = hot_f5[3:8]
+    cold_f5 = hot_f5[::-1]
     
     panels = []
     
-    # The Combinatorial Sweep (5 choose 2 = 10 Panels)
-    variable_pairs = list(itertools.combinations(variables, 2))
-    for idx, pair in enumerate(variable_pairs):
-        array = sorted(anchors + list(pair))
+    # TRAP A: HOT ANCHOR SCALP (2 Panels = $4.00)
+    hot_anchors = hot_f5[:4]
+    for idx in range(2):
+        array = sorted(hot_anchors + [hot_f5[4+idx]])
         panels.append({
-            "slip_id": f"F5-ANCHOR-LOCK-{chr(65+idx)}", 
+            "slip_id": f"F5-HOT-SCALP-{chr(65+idx)}", 
             "array": array, 
             "play_type": "STRAIGHT", 
-            "add_on": "EZMATCH: NO", 
-            "cost": "$1.00"
+            "add_on": "EZMATCH: YES", 
+            "cost": "$2.00"
+        })
+
+    # TRAP B: COLD VARIANCE SCALP (3 Panels = $6.00)
+    cold_anchors = cold_f5[:3]
+    for idx in range(3):
+        array = sorted(cold_anchors + cold_f5[3:5])
+        np.random.shuffle(cold_f5) # Rotate variables
+        panels.append({
+            "slip_id": f"F5-COLD-SCALP-{chr(67+idx)}", 
+            "array": array, 
+            "play_type": "STRAIGHT", 
+            "add_on": "EZMATCH: YES", 
+            "cost": "$2.00"
         })
 
     return {
-        "strategy": "3x5 Anchor-Variable Lock",
+        "strategy": "Split Anchor + Universal EZmatch Scalp",
         "budget_allocation": "$10.00",
-        "rationale": "Anchoring 3 momentum numbers across all 10 panels. If 3 anchors hit, variable pairs guarantee massive 3-of-5 and 4-of-5 pari-mutuel sweeps.",
+        "rationale": "Reduced to 5 panels to activate EZmatch universally. Securing the 1:4.71 instant win probability to offset session costs while hedging Hot vs. Cold anchors.",
         "panels": panels
     }
 
